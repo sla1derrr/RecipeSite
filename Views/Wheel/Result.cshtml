@@ -1,0 +1,116 @@
+@using RecipeSite.Services
+@{
+    ViewData["Title"] = "Крути колесо!";
+    var items = ViewBag.Items as List<WheelItem> ?? new List<WheelItem>();
+    var winnerIndex = (int)(ViewBag.WinnerIndex ?? 0);
+    var count = items.Count;
+    var sliceAngle = count > 0 ? 360.0 / count : 360.0;
+
+    // Палитра цветов для секторов колеса (циклично повторяется, если вариантов больше)
+    var palette = new[] { "#ff9966", "#ff5e8f", "#845ef7", "#20c997", "#ffd43b", "#4dabf7", "#ff8787", "#69db7c", "#da77f2",
+"#ffa94d" };
+}
+
+<div class="my-recipes-page">
+    <a asp-controller="Wheel" asp-action="Index" class="btn btn-outline-secondary mb-4">← Выбрать заново</a>
+
+    <div class="row justify-content-center align-items-start">
+        <!-- Колесо -->
+        <div class="col-md-5 text-center mb-4">
+            <div class="wheel-wrapper">
+                <div class="wheel-pointer">▼</div>
+                @{
+                    var gradientStops = new List<string>();
+                    double acc = 0;
+                    for (int i = 0; i < count; i++)
+                    {
+                        var color = palette[i % palette.Length];
+                        var from = acc;
+                        var to = acc + sliceAngle;
+                        gradientStops.Add($"{color} {from.ToString(System.Globalization.CultureInfo.InvariantCulture)}deg              {to.ToString(System.Globalization.CultureInfo.InvariantCulture)}deg");
+                        acc = to;
+                    }
+                    var gradientCss = string.Join(", ", gradientStops);
+                }
+                <div id="wheel" class="wheel" style="background: conic-gradient(@gradientCss);"></div>
+            </div>
+            <button id="spinButton" class="btn btn-primary btn-lg mt-4">🎡 Крутить!</button>
+        </div>
+
+        <!-- Легенда + результат -->
+        <div class="col-md-5 mb-4">
+            <div class="card p-3 shadow-sm soft-card mb-3" style="max-height: 400px; overflow-y: auto;">
+                <h6 class="fw-bold mb-3">Варианты на колесе</h6>
+                @for (int i = 0; i < count; i++)
+                {
+                    var color = palette[i % palette.Length];
+                    <div class="d-flex align-items-center mb-2 legend-item" data-index="@i">
+                        <div
+                            style="width:16px;height:16px;border-radius:4px;background:@color;margin-right:8px;flex-shrink:0;">
+                        </div>
+                        <span class="small">@items[i].Title</span>
+                    </div>
+                }
+            </div>
+
+            <div id="winnerCard" class="card p-4 shadow-sm soft-card d-none text-center">
+                <h5 class="mb-2">Сегодня готовим:</h5>
+                <h3 id="winnerTitle" class="mb-3"></h3>
+                <img id="winnerImage" src="" alt="" class="img-fluid rounded-4 mb-3 d-none"
+                     style="max-height:200px;object-fit:cover;" />
+                <a id="winnerLink" href="#" class="btn btn-primary d-none" target="_blank">Открыть рецепт</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const items = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(items));
+    const winnerIndex = @winnerIndex;
+    const sliceAngle = @(sliceAngle.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+    const wheel = document.getElementById('wheel');
+    const spinButton = document.getElementById('spinButton');
+
+    spinButton.addEventListener('click', function () {
+        spinButton.disabled = true;
+
+        const targetSliceCenter = winnerIndex * sliceAngle + sliceAngle / 2;
+        const fullSpins = 5 * 360;
+        const finalRotation = fullSpins + (360 - targetSliceCenter);
+
+        wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+        wheel.style.transform = 'rotate(' + finalRotation + 'deg)';
+
+        setTimeout(function () {
+            const winner = items[winnerIndex];
+            document.getElementById('winnerTitle').textContent = winner.Title;
+
+            const img = document.getElementById('winnerImage');
+            if (winner.ImageUrl) {
+                img.src = winner.ImageUrl;
+                img.classList.remove('d-none');
+            }
+
+            const link = document.getElementById('winnerLink');
+            if (winner.LinkUrl) {
+                link.href = winner.LinkUrl;
+                link.classList.remove('d-none');
+            }
+
+            document.getElementById('winnerCard').classList.remove('d-none');
+
+            document.querySelectorAll('.legend-item').forEach(function (el) {
+                if (parseInt(el.getAttribute('data-index')) === winnerIndex) {
+                    el.style.fontWeight = 'bold';
+                    el.style.background = '#fff0e5';
+                    el.style.borderRadius = '8px';
+                    el.style.padding = '4px';
+                }
+            });
+
+            spinButton.textContent = '🎡 Крутить ещё раз';
+            spinButton.disabled = false;
+        }, 4200);
+    });
+</script>

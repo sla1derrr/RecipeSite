@@ -1,0 +1,85 @@
+﻿@{
+    ViewData["Title"] = "Главная";
+    var facts = ViewBag.Facts as List<string> ?? new List<string>();
+}
+
+<div class="hero-section text-center">
+    <img src="https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=1200&q=80"
+         alt="Кулинария" class="hero-image" />
+    <div class="hero-text">
+        <h1>Наша книга рецептов 🍲</h1>
+        <p class="lead">
+            Здесь собраны любимые блюда — от быстрых завтраков до праздничных ужинов.
+            Сохраняй рецепты из TikTok и Instagram, добавляй свои и готовь с удовольствием.
+        </p>
+        @if (User.Identity != null && User.Identity.IsAuthenticated)
+        {
+            <a asp-controller="Recipes" asp-action="MyRecipes" class="btn btn-primary btn-lg mt-3">Мои рецепты</a>
+        }
+        else
+        {
+            <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-primary btn-lg mt-3">Начать</a>
+        }
+    </div>
+</div>
+
+<div class="container mt-5">
+    <div class="row">
+        <!-- Левая колонка: факты -->
+        <div class="col-md-3 mb-4">
+            <div class="card p-3 shadow-sm soft-card">
+                <h6 class="fw-bold mb-3">💡 А знаете ли вы?</h6>
+                @if (facts.Count > 0)
+                {
+                    @for (int i = 0; i < facts.Count && i < 2; i++)
+                    {
+                        <p class="small text-muted mb-3">@facts[i]</p>
+                    }
+                }
+                else
+                {
+                    <p class="small text-muted">Факты временно недоступны 🙈</p>
+                }
+            </div>
+        </div>
+
+        <!-- Центр: основной контент -->
+        <div class="col-md-6 mb-4">
+            <div class="row text-center">
+                <div class="col-12 mb-4">
+                    <div style="font-size:40px;">🍜</div>
+                    <h4>Разделы блюд</h4>
+                    <p>Супы, вторые, сладкое и многое другое — всё разложено по полочкам.</p>
+                </div>
+                <div class="col-12 mb-4">
+                    <div style="font-size:40px;">📱</div>
+                    <h4>Сохраняй из соцсетей</h4>
+                    <p>Увидела рецепт в TikTok или Instagram? Просто вставь ссылку и сохрани его к себе.</p>
+                </div>
+                <div class="col-12 mb-4">
+                    <div style="font-size:40px;">✨</div>
+                    <h4>Картинка автоматически</h4>
+                    <p>Придумай название блюду — картинка для него сгенерируется сама.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая колонка: ещё факты -->
+        <div class="col-md-3 mb-4">
+            <div class="card p-3 shadow-sm soft-card">
+                <h6 class="fw-bold mb-3">🍽 Ещё интересное</h6>
+                @if (facts.Count > 2)
+                {
+                    @for (int i = 2; i < facts.Count && i < 4; i++)
+                    {
+                        <p class="small text-muted mb-3">@facts[i]</p>
+                    }
+                }
+                else
+                {
+                    <p class="small text-muted">Обновится при следующем заходе на сайт 🔄</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>

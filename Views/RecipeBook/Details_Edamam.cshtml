@@ -1,0 +1,55 @@
+@model RecipeSite.Services.EdamamRecipe
+@{
+    ViewData["Title"] = Model.Label;
+}
+
+<div class="my-recipes-page">
+    <a asp-controller="RecipeBook" asp-action="Index" class="btn btn-outline-secondary mb-4">← Назад к каталогу</a>
+
+    <div class="card shadow-sm soft-card p-4">
+        <div class="row">
+            <div class="col-md-5 mb-3">
+                @if (!string.IsNullOrEmpty(Model.Image))
+                {
+                    <img src="@Model.Image" alt="@Model.Label" class="img-fluid rounded-4 shadow-sm" />
+                }
+            </div>
+            <div class="col-md-7">
+                <h2 class="mb-2">@Model.Label</h2>
+                <div class="mb-3">
+                    @if (!string.IsNullOrEmpty(Model.Source))
+                    {
+                        <span class="badge bg-secondary me-2">📖 @Model.Source</span>
+                    }
+                    @if (Model.TotalTime.HasValue && Model.TotalTime > 0)
+                    {
+                        <span class="badge bg-info text-dark">⏱ @Model.TotalTime мин</span>
+                    }
+                </div>
+
+                <h5 class="mt-4 mb-2">Ингредиенты</h5>
+                <ul class="list-group list-group-flush mb-3">
+                    @if (Model.IngredientLines != null)
+                    {
+                        @foreach (var line in Model.IngredientLines)
+                        {
+                            <li class="list-group-item bg-transparent px-0">@line</li>
+                        }
+                    }
+                </ul>
+
+                @if (!string.IsNullOrEmpty(Model.Url))
+                {
+                    <a href="@Model.Url" target="_blank" class="btn btn-outline-primary mb-3">🔗 Оригинальный рецепт</a>
+                }
+            </div>
+        </div>
+
+        <hr class="my-4" />
+
+        <p class="text-muted">
+            Edamam показывает список ингредиентов, а полную пошаговую инструкцию приготовления
+            можно посмотреть на сайте первоисточника по ссылке выше.
+        </p>
+    </div>
+</div>

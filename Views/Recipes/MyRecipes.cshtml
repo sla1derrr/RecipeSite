@@ -1,0 +1,172 @@
+@model List<RecipeSite.Models.Recipe>
+@{
+    ViewData["Title"] = "Мои рецепты";
+    var categories = ViewBag.Categories as string[] ?? Array.Empty<string>();
+}
+
+<div class="my-recipes-page">
+    <h2 class="mb-4">Мои рецепты 📖</h2>
+
+    <div class="row">
+        <!-- Левая колонка: категории и поиск -->
+        <div class="col-md-3 mb-4">
+            <div class="card p-3 shadow-sm mb-3 soft-card">
+                <label class="form-label fw-bold">Поиск</label>
+                <input type="text" id="searchInput" class="form-control" placeholder="Найти по названию..."
+                       oninput="filterRecipes()" />
+            </div>
+
+            <div class="card p-3 shadow-sm soft-card">
+                <label class="form-label fw-bold mb-2">Категории</label>
+                <div class="list-group">
+                    <button type="button" class="list-group-item list-group-item-action category-filter active"
+                            data-category="all" onclick="selectCategory(this)">
+                        Все рецепты
+                    </button>
+                    @foreach (var cat in categories)
+                    {
+                        <button type="button" class="list-group-item list-group-item-action category-filter"
+                                data-category="@cat" onclick="selectCategory(this)">
+                            @cat
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая колонка: форма добавления + список рецептов -->
+        <div class="col-md-9">
+            <div class="card p-4 shadow-sm mb-4 soft-card">
+                <h5 class="mb-3">Добавить рецепт ✨</h5>
+                <form asp-controller="Recipes" asp-action="AddRecipe" method="post">
+                    <div class="row">
+                        <div class="col-md-5 mb-3">
+                            <label class="form-label">Название блюда</label>
+                            <input type="text" name="title" class="form-control" placeholder="Например: Тирамису"
+                                   required />
+                        </div>
+
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Категория</label>
+                            <select name="category" class="form-select" required>
+                                @foreach (var cat in categories)
+                                {
+                                    <option value="@cat">@cat</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Ссылка на TikTok/Instagram</label>
+                            <input type="url" name="sourceUrl" class="form-control" placeholder="https://..." />
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Добавить рецепт</button>
+                </form>
+            </div>
+
+            <div id="recipesGrid" class="row">
+                @if (!Model.Any())
+                {
+                    <p class="text-muted text-center" id="emptyMessage">Пока нет ни одного рецепта. Добавь первый выше 👆
+                    </p>
+                }
+                @foreach (var recipe in Model)
+                {
+                    <div class="col-md-4 mb-4 recipe-card-wrapper" data-category="@recipe.Category"
+                         data-title="@recipe.Title.ToLower()">
+                        <div class="card h-100 shadow-sm soft-card recipe-card">
+                            <div class="recipe-placeholder">
+                                @{
+                                    var categoryIcons = new Dictionary<string, string>
+        {
+            { "Супы", "🍲" },
+            { "Вторые", "🍛" },
+            { "Сладкое", "🍰" },
+            { "Закуски", "🥟" },
+            { "Салаты", "🥗" }
+        };
+                                    var icon = categoryIcons.TryGetValue(recipe.Category, out var emoji) ? emoji : "🍽️";
+                                }
+                                @icon
+                            </div>
+                            <div class="card-body">
+                                <span class="badge bg-secondary mb-2">@recipe.Category</span>
+                                <h5 class="card-title">@recipe.Title</h5>
+                                @if (!string.IsNullOrEmpty(recipe.SourceUrl))
+                                {
+                                    <a href="@recipe.SourceUrl" target="_blank" class="d-block mb-2">🔗 Открыть источник</a>
+                                }
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                        onclick="openDeleteModal(@recipe.Id, '@recipe.Title')">Удалить</button>
+                            </div>
+                        </div>
+                    </div>
+                }
+                <p class="text-muted text-center d-none" id="noResultsMessage">Ничего не найдено 🔍</p>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Модальное окно подтверждения удаления -->
+<div id="deleteModalOverlay" class="delete-modal-overlay d-none">
+    <div class="delete-modal-box">
+        <div style="font-size:40px;" class="mb-2">🗑️</div>
+        <h5 class="mb-2">Удалить рецепт?</h5>
+        <p class="text-muted mb-4">«<span id="deleteModalTitle"></span>» будет удалён без возможности восстановления.
+        </p>
+        <form id="deleteModalForm" asp-controller="Recipes" asp-action="DeleteRecipe" method="post"
+              class="d-flex gap-2 justify-content-center">
+            <input type="hidden" name="id" id="deleteModalId" value="" />
+            <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Отмена</button>
+            <button type="submit" class="btn btn-danger">Удалить</button>
+        </form>
+    </div>
+</div>
+<script>
+    let currentCategory = 'all';
+
+    function selectCategory(button) {
+        document.querySelectorAll('.category-filter').forEach(function (btn) {
+            btn.classList.remove('active');
+        });
+        button.classList.add('active');
+        currentCategory = button.getAttribute('data-category');
+        filterRecipes();
+    }
+
+    function filterRecipes() {
+        var search = document.getElementById('searchInput').value.toLowerCase();
+        var cards = document.querySelectorAll('.recipe-card-wrapper');
+        var visibleCount = 0;
+
+        cards.forEach(function (card) {
+            var matchesCategory = currentCategory === 'all' || card.getAttribute('data-category') === currentCategory;
+            var matchesSearch = card.getAttribute('data-title').includes(search);
+
+            if (matchesCategory && matchesSearch) {
+                card.classList.remove('d-none');
+                visibleCount++;
+            } else {
+                card.classList.add('d-none');
+            }
+        });
+
+        var noResults = document.getElementById('noResultsMessage');
+        if (visibleCount === 0 && cards.length > 0) {
+            noResults.classList.remove('d-none');
+        } else {
+            noResults.classList.add('d-none');
+        }
+    }
+    function openDeleteModal(id, title) {
+        document.getElementById('deleteModalId').value = id;
+        document.getElementById('deleteModalTitle').textContent = title;
+        document.getElementById('deleteModalOverlay').classList.remove('d-none');
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModalOverlay').classList.add('d-none');
+    }
+</script>

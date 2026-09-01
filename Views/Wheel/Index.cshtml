@@ -1,0 +1,62 @@
+@{
+    ViewData["Title"] = "Что приготовить?";
+    var categories = ViewBag.Categories as List<string> ?? new List<string>();
+    var isLoggedIn = ViewBag.IsLoggedIn as bool? ?? false;
+    var hasOwnRecipes = ViewBag.HasOwnRecipes as bool? ?? false;
+}
+
+<div class="my-recipes-page">
+    <h2 class="mb-2">Что приготовить? 🎡</h2>
+    <p class="text-muted mb-4">Выбери, откуда брать варианты, и крути колесо — оно само решит, что готовить сегодня.</p>
+
+    @if (TempData["WheelError"] != null)
+    {
+        <div class="alert alert-warning">@TempData["WheelError"]</div>
+    }
+
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card p-4 shadow-sm soft-card">
+                <form asp-controller="Wheel" asp-action="Spin" method="post">
+                    @if (isLoggedIn)
+                    {
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" name="sources" value="own" id="sourceOwn"
+                                   @(hasOwnRecipes ? "checked" : "") disabled="@(!hasOwnRecipes)" />
+                            <label class="form-check-label" for="sourceOwn">
+                                📱 Мои рецепты (из TikTok/Instagram)
+                            </label>
+                            @if (!hasOwnRecipes)
+                            {
+                                <div class="small text-muted">У тебя пока нет добавленных рецептов</div>
+                            }
+                        </div>
+                        <hr />
+                    }
+                    else
+                    {
+                        <p class="small text-muted mb-3">
+                            Войди в аккаунт, чтобы добавить свои рецепты как источник для колеса.
+                        </p>
+                        <hr />
+                    }
+
+                    <label class="form-label fw-bold mb-2">🌍 Категории мировых рецептов</label>
+                    <div class="row">
+                        @foreach (var cat in categories)
+                        {
+                            <div class="col-md-6">
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" name="sources" value="@cat" id="cat_@cat" />
+                                    <label class="form-check-label" for="cat_@cat">@cat</label>
+                                </div>
+                            </div>
+                        }
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 mt-4">🎡 Крутить колесо</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

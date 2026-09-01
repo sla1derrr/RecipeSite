@@ -1,0 +1,83 @@
+@model List<RecipeSite.Services.CatalogRecipe>
+@{
+    ViewData["Title"] = "Книга рецептов";
+    var categories = ViewBag.Categories as List<string> ?? new List<string>();
+    var selectedCategory = ViewBag.SelectedCategory as string;
+    var searchQuery = ViewBag.SearchQuery as string;
+}
+
+<div class="my-recipes-page">
+    <h2 class="mb-4">Книга рецептов 🌍</h2>
+
+    <div class="row">
+        <!-- Левая колонка: поиск и категории -->
+        <div class="col-md-3 mb-4">
+            <div class="card p-3 shadow-sm mb-3 soft-card">
+                <form asp-controller="RecipeBook" asp-action="Index" method="get">
+                    <label class="form-label fw-bold">Поиск</label>
+                    <input type="text" name="search" class="form-control" placeholder="Найти блюдо..." value="@searchQuery" />
+                </form>
+            </div>
+
+            <div class="card p-3 shadow-sm soft-card">
+                <label class="form-label fw-bold mb-2">Категории</label>
+                <div class="list-group" style="max-height: 420px; overflow-y: auto;">
+                    @{
+                        var homeStyleActive = (selectedCategory == "Простые домашние" && string.IsNullOrEmpty(searchQuery)) ? "active" : "";
+                    }
+                    <a class="list-group-item list-group-item-action category-filter @homeStyleActive"
+                       asp-controller="RecipeBook" asp-action="Index" asp-route-category="Простые домашние">
+                        🏠 Простые домашние
+                    </a>
+                    @foreach (var cat in categories)
+                    {
+                        var isActive = (cat == selectedCategory && string.IsNullOrEmpty(searchQuery)) ? "active" : "";
+                        <a class="list-group-item list-group-item-action category-filter @isActive"
+                           asp-controller="RecipeBook" asp-action="Index" asp-route-category="@cat">
+                            @cat
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая колонка: список блюд -->
+        <div class="col-md-9">
+            @if (!string.IsNullOrEmpty(searchQuery))
+            {
+                <p class="text-muted mb-3">Результаты поиска по запросу «@searchQuery» (из всех источников)</p>
+            }
+
+            <div class="row">
+                @if (Model == null || !Model.Any())
+                {
+                    <p class="text-muted text-center">Ничего не найдено 🔍</p>
+                }
+                @foreach (var recipe in Model!)
+                {
+                    <div class="col-md-4 mb-4">
+                        <a asp-controller="RecipeBook" asp-action="Details" asp-route-id="@recipe.Id" class="text-decoration-none text-dark">
+                            <div class="card h-100 shadow-sm soft-card recipe-card">
+                                @if (!string.IsNullOrEmpty(recipe.ImageUrl))
+                                {
+                                    <img src="@recipe.ImageUrl" class="card-img-top" alt="@recipe.Title" style="height:180px;object-fit:cover;border-radius:14px 14px 0 0;" />
+                                }
+                                else
+                                {
+                                    <div class="recipe-placeholder">🍽️</div>
+                                }
+                                <div class="card-body">
+                                    @if (!string.IsNullOrEmpty(recipe.Category))
+                                    {
+                                        <span class="badge bg-secondary mb-2">@recipe.Category</span>
+                                    }
+                                    <h5 class="card-title">@recipe.Title</h5>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

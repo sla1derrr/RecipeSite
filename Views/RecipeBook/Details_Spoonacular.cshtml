@@ -1,0 +1,60 @@
+@model RecipeSite.Services.SpoonacularRecipe
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="my-recipes-page">
+    <a asp-controller="RecipeBook" asp-action="Index" class="btn btn-outline-secondary mb-4">← Назад к каталогу</a>
+
+    <div class="card shadow-sm soft-card p-4">
+        <div class="row">
+            <div class="col-md-5 mb-3">
+                @if (!string.IsNullOrEmpty(Model.Image))
+                {
+                    <img src="@Model.Image" alt="@Model.Title" class="img-fluid rounded-4 shadow-sm" />
+                }
+            </div>
+            <div class="col-md-7">
+                <h2 class="mb-2">@Model.Title</h2>
+                <div class="mb-3">
+                    @if (Model.ReadyInMinutes.HasValue)
+                    {
+                        <span class="badge bg-secondary me-2">⏱ @Model.ReadyInMinutes мин</span>
+                    }
+                    @if (Model.Servings.HasValue)
+                    {
+                        <span class="badge bg-info text-dark">🍽 @Model.Servings порций</span>
+                    }
+                </div>
+
+                <h5 class="mt-4 mb-2">Ингредиенты</h5>
+                <ul class="list-group list-group-flush mb-3">
+                    @if (Model.ExtendedIngredients != null)
+                    {
+                        @foreach (var ing in Model.ExtendedIngredients)
+                        {
+                            <li class="list-group-item bg-transparent px-0">@ing.Original</li>
+                        }
+                    }
+                </ul>
+
+                @if (!string.IsNullOrEmpty(Model.SourceUrl))
+                {
+                    <a href="@Model.SourceUrl" target="_blank" class="btn btn-outline-primary mb-3">🔗 Оригинальный рецепт</a>
+                }
+            </div>
+        </div>
+
+        <hr class="my-4" />
+
+        <h5 class="mb-3">Способ приготовления</h5>
+        @if (!string.IsNullOrEmpty(Model.Instructions))
+        {
+            <p style="white-space: pre-line;">@Html.Raw(Model.Instructions)</p>
+        }
+        else
+        {
+            <p class="text-muted">Инструкция недоступна — смотри оригинальный рецепт по ссылке выше.</p>
+        }
+    </div>
+</div>
