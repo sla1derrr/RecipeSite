@@ -6,9 +6,24 @@ using RecipeSite.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
-                       ?? Environment.GetEnvironmentVariable("DATABASE_PRIVATE_URL")
-                       ?? builder.Configuration.GetConnectionString("DefaultConnection");
+var rawConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+                          ?? Environment.GetEnvironmentVariable("DATABASE_PRIVATE_URL")
+                          ?? builder.Configuration["DATABASE_URL"]
+                          ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+string connectionString = rawConnectionString ?? "";
+
+if (!string.IsNullOrEmpty(rawConnectionString) && (rawConnectionString.StartsWith("postgres://") || rawConnectionString.StartsWith("postgresql://")))
+{
+    var uri = new Uri(rawConnectionString);
+    var userInfo = uri.UserInfo.Split(':');
+    var user = userInfo[0];
+    var password = userInfo.Length > 1 ? userInfo[1] : "";
+    var port = uri.Port > 0 ? uri.Port : 5432;
+    var database = uri.AbsolutePath.TrimStart('/');
+
+    connectionString = $"Host={uri.Host};Port={port};Database={database};Username={user};Password={password};Include Error Detail=true";
+}
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
