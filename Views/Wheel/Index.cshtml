@@ -5,58 +5,80 @@
     var hasOwnRecipes = ViewBag.HasOwnRecipes as bool? ?? false;
 }
 
-<div class="my-recipes-page">
-    <h2 class="mb-2">Что приготовить? 🎡</h2>
-    <p class="text-muted mb-4">Выбери, откуда брать варианты, и крути колесо — оно само решит, что готовить сегодня.</p>
-
-    @if (TempData["WheelError"] != null)
-    {
-        <div class="alert alert-warning">@TempData["WheelError"]</div>
-    }
-
+<div class="container mt-4 mb-5">
     <div class="row justify-content-center">
-        <div class="col-md-7">
-            <div class="card p-4 shadow-sm soft-card">
+        <div class="col-lg-8">
+            
+            <!-- Главная карточка-обертка в стиле Foodify -->
+            <div class="card shadow border-0 rounded-4 p-4 p-md-5 bg-white">
+                
+                <h3 class="fw-bold mb-2 text-dark">Что приготовить? 🎡</h3>
+                <p class="text-muted mb-4 small">Выбери, откуда брать варианты, и крути колесо — оно само решит, что готовить сегодня.</p>
+
+                @if (TempData["WheelError"] != null)
+                {
+                    <div class="alert alert-warning rounded-3 border-0 shadow-sm">@TempData["WheelError"]</div>
+                }
+
                 <form asp-controller="Wheel" asp-action="Spin" method="post">
                     @if (isLoggedIn)
                     {
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" name="sources" value="own" id="sourceOwn"
+                        <div class="form-check mb-3 p-3 rounded-3 bg-light border">
+                            <input class="form-check-input mt-1" type="checkbox" name="sources" value="own" id="sourceOwn"
                                    @(hasOwnRecipes ? "checked" : "") disabled="@(!hasOwnRecipes)" />
-                            <label class="form-check-label" for="sourceOwn">
+                            <label class="form-check-label fw-bold text-dark ms-2" for="sourceOwn">
                                 📱 Мои рецепты (из TikTok/Instagram)
                             </label>
                             @if (!hasOwnRecipes)
                             {
-                                <div class="small text-muted">У тебя пока нет добавленных рецептов</div>
+                                <div class="small text-muted mt-1 ms-4">У тебя пока нет добавленных рецептов</div>
                             }
                         </div>
-                        <hr />
+                        <hr class="my-4 opacity-25" />
                     }
                     else
                     {
-                        <p class="small text-muted mb-3">
-                            Войди в аккаунт, чтобы добавить свои рецепты как источник для колеса.
-                        </p>
-                        <hr />
+                        <div class="p-3 rounded-3 bg-light border mb-4">
+                            <p class="small text-muted mb-0">
+                                🔒 <a asp-area="Identity" asp-page="/Account/Login" class="text-decoration-none fw-bold" style="color: #ff6b8b;">Войди в аккаунт</a>, чтобы добавить свои рецепты как источник для колеса.
+                            </p>
+                        </div>
                     }
 
-                    <label class="form-label fw-bold mb-2">🌍 Категории мировых рецептов</label>
-                    <div class="row">
+                    <label class="form-label fw-bold text-dark mb-3">🌍 Категории мировых рецептов</label>
+                    <div class="row g-2 mb-4">
                         @foreach (var cat in categories)
                         {
                             <div class="col-md-6">
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="checkbox" name="sources" value="@cat" id="cat_@cat" />
-                                    <label class="form-check-label" for="cat_@cat">@cat</label>
+                                <div class="form-check p-2 rounded-3 bg-light border h-100 d-flex align-items-center">
+                                    <input class="form-check-input ms-1 me-2" type="checkbox" name="sources" value="@cat" id="cat_@cat" />
+                                    <label class="form-check-label text-secondary small fw-bold" for="cat_@cat">@cat</label>
                                 </div>
                             </div>
                         }
                     </div>
 
-                    <button type="submit" class="btn btn-primary btn-lg w-100 mt-4">🎡 Крутить колесо</button>
+                    <button type="submit" class="btn btn-lg rounded-3 text-white fw-bold w-100 py-3 shadow-sm" style="background-color: #ff6b8b; border: none;">
+                        🎡 Крутить колесо
+                    </button>
                 </form>
+
             </div>
+
         </div>
     </div>
 </div>
+
+<style>
+    /* Плавный эффект при наведении на брендированную кнопку */
+    button[type="submit"]:hover {
+        background-color: #ff5277 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15) !important;
+    }
+    /* Кастомизация галочки чекбокса под розовый цвет */
+    .form-check-input:checked {
+        background-color: #ff6b8b;
+        border-color: #ff6b8b;
+    }
+</style>

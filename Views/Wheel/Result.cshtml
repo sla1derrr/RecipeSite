@@ -6,61 +6,101 @@
     var count = items.Count;
     var sliceAngle = count > 0 ? 360.0 / count : 360.0;
 
-    // Палитра цветов для секторов колеса (циклично повторяется, если вариантов больше)
-    var palette = new[] { "#ff9966", "#ff5e8f", "#845ef7", "#20c997", "#ffd43b", "#4dabf7", "#ff8787", "#69db7c", "#da77f2",
-"#ffa94d" };
+    // Функция генерации уникальных пастельных/сочных оттенков по кругу спектра (HSL), чтобы цвета не повторялись
+    var palette = new List<string>();
+    for (int i = 0; i < count; i++)
+    {
+        double hue = (360.0 / Math.Max(count, 1)) * i;
+        palette.Add($"hsl({hue.ToString(System.Globalization.CultureInfo.InvariantCulture)}, 75%, 65%)");
+    }
 }
 
-<div class="my-recipes-page">
-    <a asp-controller="Wheel" asp-action="Index" class="btn btn-outline-secondary mb-4">← Выбрать заново</a>
+<div class="container mt-4 mb-5">
+    <!-- Главная карточка-обертка в стиле Foodify -->
+    <div class="card shadow border-0 rounded-4 p-4 p-md-5 bg-white">
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="fw-bold mb-1 text-dark">Крути колесо! 🎡</h3>
+                <p class="text-muted mb-0 small">Колесо выберет блюдо для сегодняшнего ужина.</p>
+            </div>
+            <a asp-controller="Wheel" asp-action="Index" class="btn btn-outline-secondary rounded-3 px-3 py-2 border-0 bg-light shadow-sm text-dark fw-bold">
+                ← Выбрать заново
+            </a>
+        </div>
 
-    <div class="row justify-content-center align-items-start">
-        <!-- Колесо -->
-        <div class="col-md-5 text-center mb-4">
-            <div class="wheel-wrapper">
-                <div class="wheel-pointer">▼</div>
-                @{
-                    var gradientStops = new List<string>();
-                    double acc = 0;
-                    for (int i = 0; i < count; i++)
-                    {
-                        var color = palette[i % palette.Length];
-                        var from = acc;
-                        var to = acc + sliceAngle;
-                        gradientStops.Add($"{color} {from.ToString(System.Globalization.CultureInfo.InvariantCulture)}deg              {to.ToString(System.Globalization.CultureInfo.InvariantCulture)}deg");
-                        acc = to;
+        <div class="row align-items-center g-5">
+            <!-- Левая колонка: Огромное колесо на всю ширину -->
+            <div class="col-lg-7 text-center position-relative">
+                <div class="wheel-container d-inline-block position-relative my-3">
+                    <!-- Указатель сверху -->
+                    <div class="wheel-pointer shadow">▼</div>
+                    
+                    @{
+                        var gradientStops = new List<string>();
+                        double acc = 0;
+                        for (int i = 0; i < count; i++)
+                        {
+                            var color = palette[i];
+                            var from = acc;
+                            var to = acc + sliceAngle;
+                            gradientStops.Add($"{color} {from.ToString(System.Globalization.CultureInfo.InvariantCulture)}deg {to.ToString(System.Globalization.CultureInfo.InvariantCulture)}deg");
+                            acc = to;
+                        }
+                        var gradientCss = string.Join(", ", gradientStops);
                     }
-                    var gradientCss = string.Join(", ", gradientStops);
-                }
-                <div id="wheel" class="wheel" style="background: conic-gradient(@gradientCss);"></div>
-            </div>
-            <button id="spinButton" class="btn btn-primary btn-lg mt-4">🎡 Крутить!</button>
-        </div>
 
-        <!-- Легенда + результат -->
-        <div class="col-md-5 mb-4">
-            <div class="card p-3 shadow-sm soft-card mb-3" style="max-height: 400px; overflow-y: auto;">
-                <h6 class="fw-bold mb-3">Варианты на колесе</h6>
-                @for (int i = 0; i < count; i++)
-                {
-                    var color = palette[i % palette.Length];
-                    <div class="d-flex align-items-center mb-2 legend-item" data-index="@i">
-                        <div
-                            style="width:16px;height:16px;border-radius:4px;background:@color;margin-right:8px;flex-shrink:0;">
-                        </div>
-                        <span class="small">@items[i].Title</span>
+                    <!-- Само колесо -->
+                    <div id="wheel" class="wheel shadow-lg" style="background: conic-gradient(@gradientCss); width: 380px; height: 380px; border-radius: 50%; position: relative; overflow: hidden; border: 6px solid #fff;">
+                        @for (int i = 0; i < count; i++)
+                        {
+                            var angle = i * sliceAngle + sliceAngle / 2;
+                            <div class="wheel-label" style="position: absolute; width: 50%; height: 40px; top: 50%; left: 50%; transform-origin: 0% 0%; transform: rotate(@angle.ToString(System.Globalization.CultureInfo.InvariantCulture)deg); text-align: right; pointer-events: none;">
+                                <span style="display: inline-block; padding-left: 25px; max-width: 130px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; font-weight: bold; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.7); transform: translateY(-50%);">
+                                    @items[i].Title
+                                </span>
+                            </div>
+                        }
                     </div>
-                }
+                </div>
+
+                <div class="mt-3">
+                    <button id="spinButton" class="btn btn-lg text-white fw-bold px-5 py-3 rounded-3 shadow-sm" style="background-color: #ff6b8b; border: none; font-size: 1.1rem;">
+                        🎡 Крутить колесо!
+                    </button>
+                </div>
             </div>
 
-            <div id="winnerCard" class="card p-4 shadow-sm soft-card d-none text-center">
-                <h5 class="mb-2">Сегодня готовим:</h5>
-                <h3 id="winnerTitle" class="mb-3"></h3>
-                <img id="winnerImage" src="" alt="" class="img-fluid rounded-4 mb-3 d-none"
-                     style="max-height:200px;object-fit:cover;" />
-                <a id="winnerLink" href="#" class="btn btn-primary d-none" target="_blank">Открыть рецепт</a>
+            <!-- Правая колонка: Легенда и результат -->
+            <div class="col-lg-5">
+                <div class="p-3 rounded-4 bg-light border mb-4">
+                    <h6 class="fw-bold mb-3 text-dark">Варианты на колесе (@count)</h6>
+                    <div style="max-height: 250px; overflow-y: auto;" class="pe-2">
+                        @for (int i = 0; i < count; i++)
+                        {
+                            var color = palette[i];
+                            <div class="d-flex align-items-center mb-2 legend-item p-2 rounded-3 bg-white border-0 shadow-sm" data-index="@i">
+                                <div style="width:14px; height:14px; border-radius:4px; background:@color; margin-right:10px; flex-shrink:0;"></div>
+                                <span class="small text-dark text-truncate">@items[i].Title</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Карточка победителя -->
+                <div id="winnerCard" class="card p-4 shadow-sm border-0 rounded-4 d-none text-center bg-light text-dark">
+                    <h5 class="fw-bold text-muted small text-uppercase mb-1">🎉 Сегодня готовим:</h5>
+                    <h3 id="winnerTitle" class="fw-bold mb-3" style="color: #ff6b8b;"></h3>
+                    <img id="winnerImage" src="" alt="" class="img-fluid rounded-4 mb-3 d-none shadow-sm" style="max-height: 180px; width: 100%; object-fit: cover;" />
+                    <div class="d-grid">
+                        <a id="winnerLink" href="#" class="btn text-white fw-bold py-2 rounded-3 d-none shadow-sm" target="_blank" style="background-color: #ff6b8b; border: none;">
+                            🔗 Открыть рецепт
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
+
     </div>
 </div>
 
@@ -74,12 +114,13 @@
 
     spinButton.addEventListener('click', function () {
         spinButton.disabled = true;
+        document.getElementById('winnerCard').classList.add('d-none');
 
         const targetSliceCenter = winnerIndex * sliceAngle + sliceAngle / 2;
-        const fullSpins = 5 * 360;
+        const fullSpins = 6 * 360;
         const finalRotation = fullSpins + (360 - targetSliceCenter);
 
-        wheel.style.transition = 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)';
+        wheel.style.transition = 'transform 4.5s cubic-bezier(0.15, 0.7, 0.1, 1)';
         wheel.style.transform = 'rotate(' + finalRotation + 'deg)';
 
         setTimeout(function () {
@@ -90,12 +131,16 @@
             if (winner.ImageUrl) {
                 img.src = winner.ImageUrl;
                 img.classList.remove('d-none');
+            } else {
+                img.classList.add('d-none');
             }
 
             const link = document.getElementById('winnerLink');
             if (winner.LinkUrl) {
                 link.href = winner.LinkUrl;
                 link.classList.remove('d-none');
+            } else {
+                link.classList.add('d-none');
             }
 
             document.getElementById('winnerCard').classList.remove('d-none');
@@ -103,14 +148,37 @@
             document.querySelectorAll('.legend-item').forEach(function (el) {
                 if (parseInt(el.getAttribute('data-index')) === winnerIndex) {
                     el.style.fontWeight = 'bold';
-                    el.style.background = '#fff0e5';
-                    el.style.borderRadius = '8px';
-                    el.style.padding = '4px';
+                    el.style.backgroundColor = '#ffe3ea';
+                    el.style.border = '1px solid #ff6b8b';
+                } else {
+                    el.style.fontWeight = 'normal';
+                    el.style.backgroundColor = '#fff';
+                    el.style.border = 'none';
                 }
             });
 
-            spinButton.textContent = '🎡 Крутить ещё раз';
+            spinButton.textContent = '🎡 Крутить ещё раз!';
             spinButton.disabled = false;
-        }, 4200);
+        }, 4700);
     });
 </script>
+
+<style>
+    /* Стиль указателя колеса */
+    .wheel-pointer {
+        position: absolute;
+        top: -15px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 32px;
+        color: #ff6b8b;
+        z-index: 10;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    /* Плавное увеличение кнопки */
+    #spinButton:hover {
+        background-color: #ff5277 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,0.15) !important;
+    }
+</style>
