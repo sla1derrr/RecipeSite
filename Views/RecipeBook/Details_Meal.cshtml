@@ -4,47 +4,77 @@
     var ingredients = Model.GetIngredients();
 }
 
-<div class="my-recipes-page">
-    <a asp-controller="RecipeBook" asp-action="Index" class="btn btn-outline-secondary mb-4">← Назад к каталогу</a>
+<div class="container mt-4 mb-5">
+    <!-- Кнопка назад -->
+    <a asp-controller="RecipeBook" asp-action="Index" class="btn btn-outline-secondary mb-3 rounded-3 px-3 py-2 border-0 bg-white shadow-sm text-dark fw-bold">
+        ← Назад к каталогу
+    </a>
 
-    <div class="card shadow-sm soft-card p-4">
-        <div class="row">
-            <div class="col-md-5 mb-3">
-                <img src="@Model.ImageUrl" alt="@Model.Title" class="img-fluid rounded-4 shadow-sm" />
+    <!-- Главная карточка-обертка в стиле Foodify -->
+    <div class="card shadow border-0 rounded-4 p-4 p-md-5 bg-white">
+        <div class="row g-4 align-items-center">
+            
+            <!-- Левая колонка: картинка -->
+            <div class="col-lg-5">
+                @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                {
+                    <img src="@Model.ImageUrl" alt="@Model.Title" class="img-fluid rounded-4 shadow-sm w-100" style="object-fit: cover; max-height: 350px;" />
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center bg-light rounded-4 text-muted fs-1 shadow-sm" style="height: 250px;">🍽️</div>
+                }
             </div>
-            <div class="col-md-7">
-                <h2 class="mb-2">@Model.Title</h2>
-                <div class="mb-3">
+
+            <!-- Правая колонка: название, теги и ингредиенты -->
+            <div class="col-lg-7">
+                <h2 class="fw-bold mb-3 text-dark">@Model.Title</h2>
+                
+                <div class="d-flex flex-wrap gap-2 mb-4">
                     @if (!string.IsNullOrEmpty(Model.Category))
                     {
-                        <span class="badge bg-secondary me-2">@Model.Category</span>
+                        <span class="badge rounded-pill bg-light text-secondary border px-3 py-2">📂 @Model.Category</span>
                     }
                     @if (!string.IsNullOrEmpty(Model.Area))
                     {
-                        <span class="badge bg-info text-dark">@Model.Area</span>
+                        <span class="badge rounded-pill bg-light text-dark border px-3 py-2">🌍 @Model.Area</span>
                     }
                 </div>
 
-                <h5 class="mt-4 mb-2">Ингредиенты</h5>
-                <ul class="list-group list-group-flush mb-3">
+                <h5 class="fw-bold text-dark mb-3">Ингредиенты</h5>
+                <ul class="list-group list-group-flush mb-4 border rounded-3 overflow-hidden" style="max-height: 250px; overflow-y: auto;">
                     @foreach (var (ingredient, measure) in ingredients)
                     {
-                        <li class="list-group-item bg-transparent px-0">
-                            <strong>@ingredient</strong> — @measure
+                        <li class="list-group-item bg-transparent px-3 py-2 text-secondary border-bottom d-flex justify-content-between align-items-center">
+                            <span><strong>@ingredient</strong></span>
+                            <span class="text-muted small">@measure</span>
                         </li>
                     }
                 </ul>
 
                 @if (!string.IsNullOrEmpty(Model.YoutubeUrl))
                 {
-                    <a href="@Model.YoutubeUrl" target="_blank" class="btn btn-danger mb-3">▶ Видео-рецепт на YouTube</a>
+                    <a href="@Model.YoutubeUrl" target="_blank" class="btn btn-lg rounded-3 text-white shadow-sm fw-bold w-100 py-3 d-flex align-items-center justify-content-center gap-2" style="background-color: #ff0000; border: none;">
+                        <span>▶</span> Видео-рецепт на YouTube
+                    </a>
                 }
             </div>
         </div>
 
-        <hr class="my-4" />
+        <hr class="my-4 text-muted opacity-25" />
 
-        <h5 class="mb-3">Способ приготовления</h5>
-        <p style="white-space: pre-line;">@Model.Instructions</p>
+        <h5 class="fw-bold text-dark mb-3">Способ приготовления</h5>
+        <div class="p-3 rounded-3 bg-light border-0">
+            <p class="text-secondary mb-0" style="white-space: pre-line; line-height: 1.6;">@Model.Instructions</p>
+        </div>
     </div>
 </div>
+
+<style>
+    /* Эффект при наведении на кнопку YouTube */
+    a[href*="youtube.com"]:hover {
+        opacity: 0.9;
+        transform: translateY(-2px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15) !important;
+    }
+</style>

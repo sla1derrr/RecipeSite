@@ -3,58 +3,84 @@
     ViewData["Title"] = Model.Title;
 }
 
-<div class="my-recipes-page">
-    <a asp-controller="RecipeBook" asp-action="Index" class="btn btn-outline-secondary mb-4">← Назад к каталогу</a>
+<div class="container mt-4 mb-5">
+    <!-- Кнопка назад -->
+    <a asp-controller="RecipeBook" asp-action="Index" class="btn btn-outline-secondary mb-3 rounded-3 px-3 py-2 border-0 bg-white shadow-sm text-dark fw-bold">
+        ← Назад к каталогу
+    </a>
 
-    <div class="card shadow-sm soft-card p-4">
-        <div class="row">
-            <div class="col-md-5 mb-3">
+    <!-- Главная карточка-обертка в стиле Foodify -->
+    <div class="card shadow border-0 rounded-4 p-4 p-md-5 bg-white">
+        <div class="row g-4 align-items-center">
+            
+            <!-- Левая колонка: картинка -->
+            <div class="col-lg-5">
                 @if (!string.IsNullOrEmpty(Model.Image))
                 {
-                    <img src="@Model.Image" alt="@Model.Title" class="img-fluid rounded-4 shadow-sm" />
+                    <img src="@Model.Image" alt="@Model.Title" class="img-fluid rounded-4 shadow-sm w-100" style="object-fit: cover; max-height: 350px;" />
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center bg-light rounded-4 text-muted fs-1 shadow-sm" style="height: 250px;">🍽️</div>
                 }
             </div>
-            <div class="col-md-7">
-                <h2 class="mb-2">@Model.Title</h2>
-                <div class="mb-3">
+
+            <!-- Правая колонка: название, теги и ингредиенты -->
+            <div class="col-lg-7">
+                <h2 class="fw-bold mb-3 text-dark">@Model.Title</h2>
+                
+                <div class="d-flex flex-wrap gap-2 mb-4">
                     @if (Model.ReadyInMinutes.HasValue)
                     {
-                        <span class="badge bg-secondary me-2">⏱ @Model.ReadyInMinutes мин</span>
+                        <span class="badge rounded-pill bg-light text-secondary border px-3 py-2">⏱ @Model.ReadyInMinutes мин</span>
                     }
                     @if (Model.Servings.HasValue)
                     {
-                        <span class="badge bg-info text-dark">🍽 @Model.Servings порций</span>
+                        <span class="badge rounded-pill bg-light text-dark border px-3 py-2">🍽 @Model.Servings порций</span>
                     }
                 </div>
 
-                <h5 class="mt-4 mb-2">Ингредиенты</h5>
-                <ul class="list-group list-group-flush mb-3">
+                <h5 class="fw-bold text-dark mb-3">Ингредиенты</h5>
+                <ul class="list-group list-group-flush mb-4 border rounded-3 overflow-hidden" style="max-height: 250px; overflow-y: auto;">
                     @if (Model.ExtendedIngredients != null)
                     {
                         @foreach (var ing in Model.ExtendedIngredients)
                         {
-                            <li class="list-group-item bg-transparent px-0">@ing.Original</li>
+                            <li class="list-group-item bg-transparent px-3 py-2 text-secondary border-bottom">@ing.Original</li>
                         }
                     }
                 </ul>
 
                 @if (!string.IsNullOrEmpty(Model.SourceUrl))
                 {
-                    <a href="@Model.SourceUrl" target="_blank" class="btn btn-outline-primary mb-3">🔗 Оригинальный рецепт</a>
+                    <a href="@Model.SourceUrl" target="_blank" class="btn btn-lg rounded-3 text-white shadow-sm fw-bold w-100 py-3" style="background-color: #ff6b8b; border: none;">
+                        🔗 Оригинальный рецепт
+                    </a>
                 }
             </div>
         </div>
 
-        <hr class="my-4" />
+        <hr class="my-4 text-muted opacity-25" />
 
-        <h5 class="mb-3">Способ приготовления</h5>
-        @if (!string.IsNullOrEmpty(Model.Instructions))
-        {
-            <p style="white-space: pre-line;">@Html.Raw(Model.Instructions)</p>
-        }
-        else
-        {
-            <p class="text-muted">Инструкция недоступна — смотри оригинальный рецепт по ссылке выше.</p>
-        }
+        <h5 class="fw-bold text-dark mb-3">Способ приготовления</h5>
+        <div class="p-3 rounded-3 bg-light border-0">
+            @if (!string.IsNullOrEmpty(Model.Instructions))
+            {
+                <div class="text-secondary mb-0" style="white-space: pre-line; line-height: 1.6;">@Html.Raw(Model.Instructions)</div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">Инструкция недоступна — смотри оригинальный рецепт по ссылке выше.</p>
+            }
+        </div>
     </div>
 </div>
+
+<style>
+    /* Плавный эффект при наведении на брендированную кнопку */
+    a[target="_blank"]:hover {
+        background-color: #ff5277 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15) !important;
+    }
+</style>
