@@ -445,3 +445,11 @@ body {
     border-color: #ff6b8b;
     color: white;
 }
+/* Убираем синее выделение текста при клике/наведении */
+.custom-manage-nav .nav-link,
+.custom-manage-nav .nav-link * {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
