@@ -1,48 +1,25 @@
-// Licensed to the .NET Foundation under one or more agreements.
-// The .NET Foundation licenses this file to you under the MIT license.
-#nullable disable
-
 using System;
-using System.ComponentModel.DataAnnotations;
 using System.IO;
-using System.Text.Encodings.Web;
+using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using RecipeSite.Models;
 
 namespace RecipeSite.Areas.Identity.Pages.Account.Manage
 {
     public class IndexModel : PageModel
     {
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly SignInManager<ApplicationUser> _signInManager;
-        private readonly IWebHostEnvironment _webHostEnvironment;
+        private readonly UserManager<IdentityUser> _userManager;
+        private readonly SignInManager<IdentityUser> _signInManager;
 
-        public IndexModel(
-            UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager,
-            IWebHostEnvironment webHostEnvironment)
+        public IndexModel(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager)
         {
             _userManager = userManager;
             _signInManager = signInManager;
-            _webHostEnvironment = webHostEnvironment;
         }
-
-        public string Username { get; set; }
-
-        // Текущий путь к аватарке (для отображения на странице)
-        public string CurrentAvatarUrl { get; set; }
-        public string CurrentAvatarPreset { get; set; }
-
-        // Список готовых иконок на выбор (эмодзи как "пресет")
-        public static readonly string[] AvatarPresets = new[]
-        {
-            "🍳", "🥗", "🍕", "🍰", "🍜", "🍇", "👩‍🍳", "👨‍🍳"
-        };
 
         [TempData]
         public string StatusMessage { get; set; }
@@ -52,52 +29,25 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
 
         public class InputModel
         {
-            [Phone]
-            [Display(Name = "Phone number")]
-            public string PhoneNumber { get; set; }
-
-            [Display(Name = "Имя")]
-            [StringLength(50)]
-            public string FirstName { get; set; }
-
-            [Display(Name = "Фамилия")]
-            [StringLength(50)]
-            public string LastName { get; set; }
-
-            // Выбранная готовая иконка (если не грузим своё фото)
-            [Display(Name = "Готовая иконка")]
-            public string AvatarPreset { get; set; }
-
-            // Загружаемый файл своей картинки
-            [Display(Name = "Своя картинка")]
+            public string NewUsername { get; set; }
+            public string Avatar { get; set; }
             public IFormFile AvatarFile { get; set; }
         }
 
-        private async Task LoadAsync(ApplicationUser user)
+        private async Task LoadAsync(IdentityUser user)
         {
-            var userName = await _userManager.GetUserNameAsync(user);
-            var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
-
-            Username = userName;
-            CurrentAvatarUrl = user.AvatarUrl;
-            CurrentAvatarPreset = user.AvatarPreset;
-
+            var claims = await _userManager.GetClaimsAsync(user);
             Input = new InputModel
             {
-                PhoneNumber = phoneNumber,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                AvatarPreset = user.AvatarPreset
+                NewUsername = await _userManager.GetUserNameAsync(user),
+                Avatar = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value
             };
         }
 
         public async Task<IActionResult> OnGetAsync()
         {
             var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
-            }
+            if (user == null) return NotFound();
 
             await LoadAsync(user);
             return Page();
@@ -106,10 +56,7 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
         public async Task<IActionResult> OnPostAsync()
         {
             var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
-                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
-            }
+            if (user == null) return NotFound();
 
             if (!ModelState.IsValid)
             {
@@ -117,48 +64,48 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 return Page();
             }
 
-            var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
-            if (Input.PhoneNumber != phoneNumber)
+            // Обновление никнейма
+            var currentUsername = await _userManager.GetUserNameAsync(user);
+            if (Input.NewUsername != currentUsername && !string.IsNullOrEmpty(Input.NewUsername))
             {
-                var setPhoneResult = await _userManager.SetPhoneNumberAsync(user, Input.PhoneNumber);
-                if (!setPhoneResult.Succeeded)
+                var setUserNameResult = await _userManager.SetUserNameAsync(user, Input.NewUsername);
+                if (!setUserNameResult.Succeeded)
                 {
-                    StatusMessage = "Unexpected error when trying to set phone number.";
+                    StatusMessage = "Ошибка: этот никнейм уже занят.";
                     return RedirectToPage();
                 }
             }
 
-            // Сохраняем имя и фамилию
-            user.FirstName = Input.FirstName;
-            user.LastName = Input.LastName;
+            // Обработка аватарки
+            string avatarValue = Input.Avatar;
 
-            // Если загружен новый файл картинки — сохраняем его и очищаем пресет
+            // Если пользователь загрузил свою картинку
             if (Input.AvatarFile != null && Input.AvatarFile.Length > 0)
             {
-                var uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, "uploads", "avatars");
+                var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "avatars");
                 Directory.CreateDirectory(uploadsFolder);
+                var uniqueFileName = Guid.NewGuid().ToString() + "_" + Input.AvatarFile.FileName;
+                var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
-                var fileName = $"{user.Id}_{Guid.NewGuid()}{Path.GetExtension(Input.AvatarFile.FileName)}";
-                var filePath = Path.Combine(uploadsFolder, fileName);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
                 {
-                    await Input.AvatarFile.CopyToAsync(stream);
+                    await Input.AvatarFile.CopyToAsync(fileStream);
                 }
-
-                user.AvatarUrl = $"/uploads/avatars/{fileName}";
-                user.AvatarPreset = null;
+                avatarValue = "/avatars/" + uniqueFileName;
             }
-            // Иначе, если выбрана готовая иконка — сохраняем её и очищаем свою картинку
-            else if (!string.IsNullOrEmpty(Input.AvatarPreset))
+
+            // Сохраняем аватарку в Claims
+            if (!string.IsNullOrEmpty(avatarValue))
             {
-                user.AvatarPreset = Input.AvatarPreset;
-                user.AvatarUrl = null;
+                var claims = await _userManager.GetClaimsAsync(user);
+                var oldAvatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar");
+                if (oldAvatarClaim != null) await _userManager.RemoveClaimAsync(user, oldAvatarClaim);
+                
+                await _userManager.AddClaimAsync(user, new Claim("Avatar", avatarValue));
             }
 
-            await _userManager.UpdateAsync(user);
             await _signInManager.RefreshSignInAsync(user);
-            StatusMessage = "Ваш профиль обновлён";
+            StatusMessage = "Профиль успешно обновлен.";
             return RedirectToPage();
         }
     }

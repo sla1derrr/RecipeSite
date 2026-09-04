@@ -10,43 +10,36 @@
 
 <form id="profile-form" method="post" enctype="multipart/form-data">
     <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
-    
-    <div class="row">
-        <!-- Левая часть: Текстовые поля -->
-        <div class="col-lg-7">
-            <div class="form-floating mb-3">
-                <input asp-for="Username" class="form-control" disabled />
-                <label asp-for="Username" class="form-label">Email (Логин)</label>
-            </div>
 
-            <!-- ВСТАВЬТЕ СЮДА ВАШИ ИСХОДНЫЕ ПОЛЯ: Input.Name, Input.Surname, Input.PhoneNumber -->
-            
+    <div class="row">
+        <!-- Никнейм -->
+        <!-- Никнейм -->
+        <div class="col-lg-6">
+            <div class="form-floating mb-3">
+                <input asp-for="Input.NewUsername" class="form-control" placeholder="Никнейм" />
+                <label asp-for="Input.NewUsername" class="form-label">Никнейм</label>
+            </div>
         </div>
 
-        <!-- Правая часть: Аватарка -->
-        <div class="col-lg-5 border-start ps-lg-4 mt-4 mt-lg-0">
-            <div class="text-center mb-4">
-                <div class="d-inline-block p-3 rounded-circle shadow-sm mb-2" style="background-color: #fff0f4;">
-                    <!-- ВСТАВЬТЕ СЮДА ВАШ ТЕГ <img> ДЛЯ ВЫВОДА ТЕКУЩЕГО АВАТАРА -->
-                </div>
-            </div>
-
+        <!-- Аватарка -->
+        <div class="col-lg-6 border-start ps-lg-4 mt-4 mt-lg-0">
             <div class="mb-4">
                 <label class="form-label text-muted small fw-bold">Выберите готовую иконку</label>
-                <div class="d-flex flex-wrap gap-2">
-                    <!-- ВСТАВЬТЕ СЮДА ВАШИ РАДИО-КНОПКИ С EMOJI -->
+                <div class="d-flex flex-wrap gap-2 mt-2">
+                    <!-- Сюда вставьте ваши input type="radio" с emoji -->
                 </div>
             </div>
 
-            <div class="mb-3">
+            <div class="mb-3 mt-4">
                 <label class="form-label text-muted small fw-bold">Или загрузите свою картинку</label>
-                <!-- ВСТАВЬТЕ СЮДА ВАШ INPUT TYPE="FILE" -->
+                <input type="file" name="Input.AvatarFile" class="form-control" accept="image/*" />
             </div>
         </div>
     </div>
 
-    <button id="update-profile-button" type="submit" class="w-100 btn btn-lg mt-4 shadow-sm" style="background-color: #ff6b8b; color: white; border: none; border-radius: 12px;">
-        Сохранить изменения
+    <button id="update-profile-button" type="submit" class="w-100 btn btn-lg mt-4 shadow-sm"
+            style="background-color: #ff6b8b; color: white; border: none; border-radius: 12px;">
+        Сохранить профиль
     </button>
 </form>
 
