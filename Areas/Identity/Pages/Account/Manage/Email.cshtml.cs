@@ -6,15 +6,16 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using RecipeSite.Models;
 
 namespace RecipeSite.Areas.Identity.Pages.Account.Manage
 {
     public class EmailModel : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
 
-        public EmailModel(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager)
+        public EmailModel(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -35,11 +36,10 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             public DateTime? DateOfBirth { get; set; }
         }
 
-        private async Task LoadAsync(IdentityUser user)
+        private async Task LoadAsync(ApplicationUser user)
         {
             var claims = await _userManager.GetClaimsAsync(user);
             
-            // Пытаемся распарсить дату рождения из строки в дату
             DateTime? parsedDob = null;
             var dobClaim = claims.FirstOrDefault(c => c.Type == ClaimTypes.DateOfBirth)?.Value;
             if (DateTime.TryParse(dobClaim, out var d)) parsedDob = d;
@@ -74,7 +74,6 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 return Page();
             }
 
-            // Обновление Email
             var email = await _userManager.GetEmailAsync(user);
             if (Input.NewEmail != email && !string.IsNullOrEmpty(Input.NewEmail))
             {
@@ -82,14 +81,12 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 await _userManager.SetUserNameAsync(user, Input.NewEmail);
             }
 
-            // Обновление телефона
             var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
             if (Input.PhoneNumber != phoneNumber)
             {
                 await _userManager.SetPhoneNumberAsync(user, Input.PhoneNumber);
             }
 
-            // Сохраняем Имя, Фамилию и Дату рождения в Claims
             await UpdateClaimAsync(user, ClaimTypes.GivenName, Input.Name);
             await UpdateClaimAsync(user, ClaimTypes.Surname, Input.Surname);
             await UpdateClaimAsync(user, ClaimTypes.DateOfBirth, Input.DateOfBirth?.ToString("yyyy-MM-dd"));
@@ -99,7 +96,7 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             return RedirectToPage();
         }
 
-        private async Task UpdateClaimAsync(IdentityUser user, string claimType, string claimValue)
+        private async Task UpdateClaimAsync(ApplicationUser user, string claimType, string claimValue)
         {
             var claims = await _userManager.GetClaimsAsync(user);
             var oldClaim = claims.FirstOrDefault(c => c.Type == claimType);

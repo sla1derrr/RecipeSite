@@ -4,18 +4,19 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+using RecipeSite.Models;
 
 namespace RecipeSite.Areas.Identity.Pages.Account.Manage
 {
     public class PersonalDataModel : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly ILogger<PersonalDataModel> _logger;
 
         public PersonalDataModel(
-            UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager,
+            UserManager<ApplicationUser> userManager,
+            SignInManager<ApplicationUser> signInManager,
             ILogger<PersonalDataModel> logger)
         {
             _userManager = userManager;
@@ -38,7 +39,7 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
-                return NotFound($"Не удалось загрузить пользователя с ID '{_userManager.GetUserId(User)}'.");
+                return NotFound($"Не удалось загрузить пользователя.");
             }
 
             return Page();
@@ -49,7 +50,7 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
-                return NotFound($"Не удалось загрузить пользователя с ID '{_userManager.GetUserId(User)}'.");
+                return NotFound($"Не удалось загрузить пользователя.");
             }
 
             if (!ModelState.IsValid)
@@ -64,14 +65,13 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             }
 
             var result = await _userManager.DeleteAsync(user);
-            var userId = await _userManager.GetUserIdAsync(user);
             if (!result.Succeeded)
             {
-                throw new System.InvalidOperationException($"Произошла неожиданная ошибка при удалении пользователя.");
+                throw new System.InvalidOperationException($"Произошла ошибка при удалении пользователя.");
             }
 
             await _signInManager.SignOutAsync();
-            _logger.LogInformation("Пользователь с ID '{UserId}' удалил свой аккаунт.", userId);
+            _logger.LogInformation("Пользователь удалил свой аккаунт.");
 
             return Redirect("~/");
         }
