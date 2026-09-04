@@ -1,5 +1,6 @@
 ﻿@using Microsoft.AspNetCore.Identity
 @using RecipeSite.Models
+@using System.Security.Claims
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
 
@@ -7,32 +8,41 @@
 @if (SignInManager.IsSignedIn(User))
 {
     var currentUser = await UserManager.GetUserAsync(User);
-    var displayName = currentUser?.FirstName ?? User.Identity?.Name;
+    var claims = currentUser != null ? await UserManager.GetClaimsAsync(currentUser) : new List<Claim>();
+    
+    // Получаем аватар (картинку или смайлик) из Claims или свойств
+    var avatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value;
+    
+    // Получаем никнейм (UserName или из Claims)
+    var displayNickname = currentUser?.UserName ?? User.Identity?.Name ?? "Профиль";
 
     <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle d-flex align-items-center text-dark" href="#" id="userMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            @if (!string.IsNullOrEmpty(currentUser?.AvatarUrl))
+            @if (!string.IsNullOrEmpty(avatarClaim))
             {
-                <img src="@currentUser.AvatarUrl" alt="Аватар" style="width:32px;height:32px;border-radius:50%;object-fit:cover;margin-right:8px;" />
-            }
-            else if (!string.IsNullOrEmpty(currentUser?.AvatarPreset))
-            {
-                <span style="font-size:24px;margin-right:8px;">@currentUser.AvatarPreset</span>
+                @if (avatarClaim.StartsWith("/"))
+                {
+                    <img src="@avatarClaim" alt="Аватар" style="width:32px;height:32px;border-radius:50%;object-fit:cover;margin-right:8px;" />
+                }
+                else
+                {
+                    <span style="font-size:24px;margin-right:8px;">@avatarClaim</span>
+                }
             }
             else
             {
-                <span style="font-size:24px;margin-right:8px;">🙂</span>
+                <span style="font-size:24px;margin-right:8px;">👤</span>
             }
-            @displayName
+            <span class="fw-bold">@displayNickname</span>
         </a>
-        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuLink">
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 mt-2" aria-labelledby="userMenuLink">
             <li>
-                <a class="dropdown-item" asp-area="Identity" asp-page="/Account/Manage/Index">Профиль</a>
+                <a class="dropdown-item py-2" asp-area="Identity" asp-page="/Account/Manage/Index">Профиль</a>
             </li>
             <li><hr class="dropdown-divider"></li>
             <li>
                 <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
-                    <button type="submit" class="dropdown-item">Выйти</button>
+                    <button type="submit" class="dropdown-item py-2 text-danger">Выйти</button>
                 </form>
             </li>
         </ul>
@@ -41,7 +51,7 @@
 else
 {
     <li class="nav-item">
-        <a class="nav-link text-dark" asp-area="Identity" asp-page="/Account/Login">Войти</a>
+        <a class="nav-link text-dark fw-bold" asp-area="Identity" asp-page="/Account/Login">Войти</a>
     </li>
 }
 </ul>
