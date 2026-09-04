@@ -1,0 +1,45 @@
+@page
+@model RegisterConfirmationModel
+@{
+    ViewData["Title"] = "Подтверждение регистрации";
+}
+
+<div class="container mt-5 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow border-0 rounded-4 text-center p-4 p-md-5 bg-white">
+                
+                <div class="mb-4">
+                    <div class="d-inline-flex align-items-center justify-content-center bg-light rounded-circle shadow-sm" style="width: 90px; height: 90px; font-size: 40px;">
+                        💌
+                    </div>
+                </div>
+
+                <h2 class="fw-bold mb-3 text-dark">Добро пожаловать!</h2>
+                
+                <p class="text-muted mb-4 fs-5">
+                    Спасибо за регистрацию на нашем сайте. Мы очень рады видеть вас!
+                </p>
+
+                @if (Model.DisplayConfirmAccountLink)
+                {
+                    <div class="alert alert-light border rounded-3 text-start mb-4 p-3 shadow-sm">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="fs-4 me-2">📧</span>
+                            <span class="fw-bold text-dark">Ваш Email:</span>
+                        </div>
+                        <p class="mb-0 text-muted ps-4" style="word-break: break-all;">@Model.Email</p>
+                    </div>
+
+                    <p class="mb-4 text-muted small">
+                        Пока у нас не подключена автоматическая рассылка писем. Нажмите на кнопку ниже, чтобы мгновенно активировать ваш аккаунт по системной ссылке.
+                    </p>
+
+                    <a id="confirm-link" href="@Model.EmailConfirmationUrl" class="btn btn-lg w-100 rounded-3 text-white shadow-sm fw-bold py-3" style="background-color: #ff6b8b; border: none;">
+                        Подтвердить аккаунт
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+</div>
