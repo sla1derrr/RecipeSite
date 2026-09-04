@@ -10,7 +10,7 @@
 
 <form id="profile-form" method="post" enctype="multipart/form-data">
     <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
-    
+
     <div class="row align-items-center mb-4">
         <div class="col-12">
             <div class="d-flex align-items-center p-3 rounded-3 bg-light border">
@@ -19,18 +19,21 @@
                     {
                         @if (Model.Input.Avatar.StartsWith("/"))
                         {
-                            <img src="@Model.Input.Avatar" alt="Avatar" class="rounded-circle shadow-sm" style="width: 65px; height: 65px; object-fit: cover;" id="avatar-preview" />
+                            <img src="@Model.Input.Avatar" alt="Avatar" class="rounded-circle shadow-sm"
+                                 style="width: 65px; height: 65px; object-fit: cover;" id="avatar-preview" />
                         }
                         else
                         {
-                            <div class="fs-1 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm" style="width: 65px; height: 65px;" id="avatar-preview">
+                            <div class="fs-1 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm"
+                                 style="width: 65px; height: 65px;" id="avatar-preview">
                                 @Model.Input.Avatar
                             </div>
                         }
                     }
                     else
                     {
-                        <div class="fs-1 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm text-muted" style="width: 65px; height: 65px;" id="avatar-preview">
+                        <div class="fs-1 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm text-muted"
+                             style="width: 65px; height: 65px;" id="avatar-preview">
                             👤
                         </div>
                     }
@@ -48,7 +51,8 @@
         <div class="col-lg-6">
             <div class="mb-3">
                 <label asp-for="Input.NewUsername" class="form-label text-muted small fw-bold">Никнейм</label>
-                <input asp-for="Input.NewUsername" class="form-control rounded-3 py-2" placeholder="Введите ваш никнейм" />
+                <input asp-for="Input.NewUsername" class="form-control rounded-3 py-2"
+                       placeholder="Введите ваш никнейм" />
                 <span asp-validation-for="Input.NewUsername" class="text-danger small"></span>
             </div>
         </div>
@@ -60,20 +64,25 @@
                 <div class="d-flex flex-wrap gap-2 mt-1">
                     @foreach (var emoji in new[] { "🍳", "🍕", "🍰", "🍜", "🍇", "🥑", "😎", "🐱", "🚀" })
                     {
-                        <input type="radio" class="btn-check" asp-for="Input.Avatar" id="emoji-@emoji" value="@emoji" autocomplete="off">
-                        <label class="btn btn-outline-danger rounded-circle p-2 fs-5 d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;" for="emoji-@emoji">@emoji</label>
+                        <input type="radio" class="btn-check" asp-for="Input.Avatar" id="emoji-@emoji" value="@emoji"
+                               autocomplete="off">
+                        <label
+                        class="btn btn-outline-danger rounded-circle p-2 fs-5 d-flex align-items-center justify-content-center"
+                        style="width: 45px; height: 45px;" for="emoji-@emoji">@emoji</label>
                     }
                 </div>
             </div>
 
             <div class="mb-3 mt-4">
                 <label class="form-label text-muted small fw-bold">Или загрузите свою картинку</label>
-                <input type="file" id="avatarFileinput" name="Input.AvatarFile" class="form-control rounded-3 py-2" accept="image/*" />
+                <input type="file" id="avatarFileinput" name="Input.AvatarFile" class="form-control rounded-3 py-2"
+                       accept="image/*" />
             </div>
         </div>
     </div>
 
-    <button id="update-profile-button" type="submit" class="w-100 btn btn-lg mt-4 shadow-sm text-white rounded-3" style="background-color: #ff6b8b; border: none;">
+    <button id="update-profile-button" type="submit" class="w-100 btn btn-lg mt-4 shadow-sm text-white rounded-3"
+            style="background-color: #ff6b8b; border: none;">
         Сохранить профиль
     </button>
 </form>
@@ -81,11 +90,11 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        document.getElementById('avatarFileinput').addEventListener('change', function(event) {
+        document.getElementById('avatarFileinput').addEventListener('change', function (event) {
             const file = event.target.files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
+                reader.onload = function (e) {
                     const preview = document.getElementById('avatar-preview');
                     if (preview.tagName === 'IMG') {
                         preview.src = e.target.result;

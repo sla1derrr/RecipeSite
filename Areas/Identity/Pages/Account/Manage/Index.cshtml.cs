@@ -30,8 +30,12 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
 
         public class InputModel
         {
+            [BindProperty(SupportsGet = true)]
             public string NewUsername { get; set; }
+
+            [BindProperty(SupportsGet = true)]
             public string Avatar { get; set; }
+
             public IFormFile AvatarFile { get; set; }
         }
 
@@ -40,8 +44,8 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             var claims = await _userManager.GetClaimsAsync(user);
             Input = new InputModel
             {
-                NewUsername = await _userManager.GetUserNameAsync(user),
-                Avatar = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value
+                NewUsername = user.UserName,
+                Avatar = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value ?? "👤"
             };
         }
 
@@ -65,8 +69,8 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 return Page();
             }
 
-            var currentUsername = await _userManager.GetUserNameAsync(user);
-            if (Input.NewUsername != currentUsername && !string.IsNullOrEmpty(Input.NewUsername))
+            // Обновляем никнейм
+            if (!string.IsNullOrEmpty(Input.NewUsername) && Input.NewUsername != user.UserName)
             {
                 var setUserNameResult = await _userManager.SetUserNameAsync(user, Input.NewUsername);
                 if (!setUserNameResult.Succeeded)
@@ -78,6 +82,7 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
 
             string avatarValue = Input.Avatar;
 
+            // Если загружен файл картинки — сохраняем его в wwwroot/avatars
             if (Input.AvatarFile != null && Input.AvatarFile.Length > 0)
             {
                 var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "avatars");
@@ -92,12 +97,16 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 avatarValue = "/avatars/" + uniqueFileName;
             }
 
+            // Сохраняем аватарку в Claims
             if (!string.IsNullOrEmpty(avatarValue))
             {
                 var claims = await _userManager.GetClaimsAsync(user);
                 var oldAvatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar");
-                if (oldAvatarClaim != null) await _userManager.RemoveClaimAsync(user, oldAvatarClaim);
-                
+                if (oldAvatarClaim != null)
+                {
+                    await _userManager.RemoveClaimAsync(user, oldAvatarClaim);
+                }
+
                 await _userManager.AddClaimAsync(user, new Claim("Avatar", avatarValue));
             }
 
