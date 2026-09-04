@@ -5,37 +5,102 @@
     ViewData["ActivePage"] = ManageNavPages.Index;
 }
 
-<h4 class="fw-bold mb-4">@ViewData["Title"]</h4>
+<h4 class="fw-bold mb-4">Профиль</h4>
 <partial name="_StatusMessage" for="StatusMessage" />
 
 <form id="profile-form" method="post" enctype="multipart/form-data">
     <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
-
-    <div class="row">
-        <!-- Никнейм -->
+    
+    <div class="row align-items-center">
+        <!-- Левая колонка: Текущая аватарка и никнейм -->
         <div class="col-lg-6">
+            <div class="d-flex align-items-center mb-4 p-3 rounded-3 bg-light border">
+                <div class="me-3">
+                    @if (!string.IsNullOrEmpty(Model.Input.Avatar))
+                    {
+                        if (Model.Input.Avatar.StartsWith("/"))
+                        {
+                            <img src="@Model.Input.Avatar" alt="Avatar" class="rounded-circle shadow-sm" style="width: 60px; height: 60px; object-fit: cover;" id="avatar-preview" />
+                        }
+                        else
+                        {
+                            <div class="fs-1 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm" style="width: 60px; height: 60px;" id="avatar-preview">
+                                @Model.Input.Avatar
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="fs-1 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm text-muted" style="width: 60px; height: 60px;" id="avatar-preview">
+                            👤
+                        </div>
+                    }
+                </div>
+                <div>
+                    <span class="text-muted small d-block">Ваш текущий профиль</span>
+                    <h5 class="fw-bold mb-0 text-dark">@Model.Input.NewUsername</h5>
+                </div>
+            </div>
+
             <div class="mb-3">
                 <label asp-for="Input.NewUsername" class="form-label text-muted small fw-bold">Никнейм</label>
-                <input asp-for="Input.NewUsername" class="form-control rounded-3 py-2" placeholder="Введите никнейм" />
+                <input asp-for="Input.NewUsername" class="form-control rounded-3 py-2" placeholder="Введите ваш никнейм" />
                 <span asp-validation-for="Input.NewUsername" class="text-danger small"></span>
             </div>
         </div>
 
-        <!-- Аватарка -->
+        <!-- Правая колонка: Выбор иконки / смайлика или файла -->
         <div class="col-lg-6 border-start ps-lg-4 mt-4 mt-lg-0">
             <div class="mb-3">
+                <label class="form-label text-muted small fw-bold">Выберите стандартный смайлик</label>
+                <div class="d-flex flex-wrap gap-2 mt-1">
+                    @foreach (var emoji in new[] { "🍳", "🍕", "🍰", "🍜", "🍇", "🥑", "😎", "🐱", "🚀" })
+                    {
+                        <input type="radio" class="btn-check" asp-for="Input.Avatar" id="emoji-@emoji" value="@emoji" autocomplete="off">
+                        <label class="btn btn-outline-danger rounded-circle p-2 fs-5 d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;" for="emoji-@emoji">@emoji</label>
+                    }
+                </div>
+            </div>
+
+            <div class="mb-3 mt-4">
                 <label class="form-label text-muted small fw-bold">Или загрузите свою картинку</label>
-                <input type="file" name="Input.AvatarFile" class="form-control rounded-3 py-2" accept="image/*" />
+                <input type="file" id="avatarFileinput" name="Input.AvatarFile" class="form-control rounded-3 py-2" accept="image/*" />
+                <div class="form-text small text-muted">Вы можете выбрать файл изображении для аватарки.</div>
             </div>
         </div>
     </div>
 
-    <button id="update-profile-button" type="submit" class="w-100 btn btn-lg mt-4 shadow-sm text-white rounded-3"
-            style="background-color: #ff6b8b; border: none;">
+    <button id="update-profile-button" type="submit" class="w-100 btn btn-lg mt-4 shadow-sm text-white rounded-3" style="background-color: #ff6b8b; border: none;">
         Сохранить профиль
     </button>
 </form>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Простой живой предпросмотр загружаемой картинки
+        document.getElementById('avatarFileinput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('avatar-preview');
+                    if (preview.tagName === 'IMG') {
+                        preview.src = e.target.result;
+                    } else {
+                        // Если там был эмодзи, заменяем на тег img для превью
+                        const newImg = document.createElement('img');
+                        newImg.src = e.target.result;
+                        newImg.className = 'rounded-circle shadow-sm';
+                        newImg.style.width = '60px';
+                        newImg.style.height = '60px';
+                        newImg.style.objectFit = 'cover';
+                        newImg.id = 'avatar-preview';
+                        preview.parentNode.replaceChild(newImg, preview);
+                    }
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
 }
