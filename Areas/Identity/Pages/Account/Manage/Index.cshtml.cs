@@ -26,17 +26,16 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
         public string StatusMessage { get; set; }
 
         [BindProperty]
-        public InputModel Input { get; set; }
+        public InputModel Input { get; set; } = new();
 
         public class InputModel
         {
-            [BindProperty]
-            public string NewUsername { get; set; }
+            public string NewUsername { get; set; } = string.Empty;
 
-            [BindProperty]
-            public string Avatar { get; set; }
+            public string Avatar { get; set; } = string.Empty;
 
-            public IFormFile AvatarFile { get; set; }
+            [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever]
+            public IFormFile? AvatarFile { get; set; }
         }
 
         private async Task LoadAsync(ApplicationUser user)
@@ -45,15 +44,14 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             var nicknameClaim = claims.FirstOrDefault(c => c.Type == "Nickname")?.Value;
             var avatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value;
 
-            // Если аватарка — это битая строка или слово "Avatar", сбрасываем ее до смайлика
-            if (string.IsNullOrEmpty(avatarClaim) || avatarClaim.Contains("Avatar") || avatarClaim.Length > 100 && !avatarClaim.StartsWith("/"))
+            if (string.IsNullOrEmpty(avatarClaim) || avatarClaim.Contains("Avatar") || (avatarClaim.Length > 100 && !avatarClaim.StartsWith("/")))
             {
                 avatarClaim = "👤";
             }
 
             Input = new InputModel
             {
-                NewUsername = !string.IsNullOrEmpty(nicknameClaim) ? nicknameClaim : user.UserName,
+                NewUsername = !string.IsNullOrEmpty(nicknameClaim) ? nicknameClaim : user.UserName ?? string.Empty,
                 Avatar = avatarClaim
             };
         }
@@ -72,9 +70,12 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return NotFound();
 
+            // Убираем ошибку валидации текстового аватара, если пользователь выбрал смайлик или файл
+            ModelState.Remove("Input.Avatar");
+
             var claims = await _userManager.GetClaimsAsync(user);
 
-            // Сохраняем кастомный никнейм в Claims
+            // 1. Сохраняем кастомный никнейм в Claims
             if (!string.IsNullOrEmpty(Input?.NewUsername))
             {
                 var oldNicknameClaim = claims.FirstOrDefault(c => c.Type == "Nickname");
@@ -85,16 +86,14 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 await _userManager.AddClaimAsync(user, new Claim("Nickname", Input.NewUsername));
             }
 
-            // Считываем выбранный смайлик из формы или модели
-            string selectedEmoji = Request.Form["Input.Avatar"];
-            string avatarValue = !string.IsNullOrEmpty(selectedEmoji) ? selectedEmoji : Input?.Avatar;
+            string avatarValue = string.Empty;
 
-            // Если загружен файл картинки — сохраняем его в wwwroot/avatars
+            // 2. Проверяем, загрузил ли пользователь файл картинки
             if (Input?.AvatarFile != null && Input.AvatarFile.Length > 0)
             {
                 var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "avatars");
                 Directory.CreateDirectory(uploadsFolder);
-                var uniqueFileName = Guid.NewGuid().ToString() + "_" + Input.AvatarFile.FileName;
+                var uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(Input.AvatarFile.FileName);
                 var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
                 using (var fileStream = new FileStream(filePath, FileMode.Create))
@@ -103,14 +102,21 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 }
                 avatarValue = "/avatars/" + uniqueFileName;
             }
-
-            // Если аватар не выбран, берем старый из claims или оставляем дефолтный
-            if (string.IsNullOrEmpty(avatarValue))
+            else
             {
-                avatarValue = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value ?? "👤";
+                // 3. Если файл не загружали, смотрим, выбран ли смайлик
+                string selectedEmoji = Request.Form["Input.Avatar"];
+                if (!string.IsNullOrEmpty(selectedEmoji))
+                {
+                    avatarValue = selectedEmoji;
+                }
+                else
+                {
+                    avatarValue = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value ?? "👤";
+                }
             }
 
-            // Перезаписываем Claim аватара
+            // 4. Перезаписываем Claim аватара
             var oldAvatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar");
             if (oldAvatarClaim != null)
             {
