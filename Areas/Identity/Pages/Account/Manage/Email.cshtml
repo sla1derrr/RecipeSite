@@ -13,19 +13,42 @@
 
     <div class="mb-3">
         <label class="form-label text-muted small fw-bold">Текущая почта</label>
-        <input asp-for="Input.NewEmail" class="form-control rounded-3 py-2" disabled placeholder="Текущий email" />
+        <!-- Используем CurrentEmail для заблокированного поля -->
+        <input asp-for="CurrentEmail" class="form-control rounded-3 py-2" disabled />
     </div>
 
     <div class="mb-3">
         <label asp-for="Input.NewEmail" class="form-label text-muted small fw-bold">Новая почта</label>
-        <input asp-for="Input.NewEmail" class="form-control rounded-3 py-2" autocomplete="email" aria-required="true"
-               placeholder="Введите новый email" />
+        <input asp-for="Input.NewEmail" class="form-control rounded-3 py-2" autocomplete="email" placeholder="Введите новый email" />
         <span asp-validation-for="Input.NewEmail" class="text-danger small"></span>
     </div>
 
-    <button id="change-email-button" type="submit" asp-page-handler="ChangeEmail"
+    <div class="mb-3">
+        <label asp-for="Input.Name" class="form-label text-muted small fw-bold">Имя</label>
+        <input asp-for="Input.Name" class="form-control rounded-3 py-2" placeholder="Иван" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.Surname" class="form-label text-muted small fw-bold">Фамилия</label>
+        <input asp-for="Input.Surname" class="form-control rounded-3 py-2" placeholder="Иванов" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Input.DateOfBirth" class="form-label text-muted small fw-bold">Дата рождения</label>
+        <input asp-for="Input.DateOfBirth" type="date" class="form-control rounded-3 py-2" />
+    </div>
+
+    <div class="mb-4">
+        <label asp-for="Input.PhoneNumber" class="form-label text-muted small fw-bold">
+            Номер телефона <span class="fw-normal text-secondary">(необязательно)</span>
+        </label>
+        <input asp-for="Input.PhoneNumber" class="form-control rounded-3 py-2" placeholder="+48 000 000 000" />
+        <span asp-validation-for="Input.PhoneNumber" class="text-danger small"></span>
+    </div>
+
+    <button id="change-email-button" type="submit"
             class="w-100 btn btn-lg mt-4 shadow-sm text-white rounded-3" style="background-color: #ff6b8b; border: none;">
-        Изменить почту
+        Сохранить изменения
     </button>
 </form>
 

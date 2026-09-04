@@ -24,15 +24,19 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
         [TempData]
         public string StatusMessage { get; set; }
 
+        public string CurrentEmail { get; set; } 
+
         [BindProperty]
-        public InputModel Input { get; set; }
+        public InputModel Input { get; set; } = new();
 
         public class InputModel
         {
-            public string NewEmail { get; set; }
-            public string Name { get; set; }
-            public string Surname { get; set; }
-            public string PhoneNumber { get; set; }
+            public string? NewEmail { get; set; }
+            public string? Name { get; set; }
+            public string? Surname { get; set; }
+            
+            [Phone]
+            public string? PhoneNumber { get; set; }
             public DateTime? DateOfBirth { get; set; }
         }
 
@@ -44,9 +48,11 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             var dobClaim = claims.FirstOrDefault(c => c.Type == ClaimTypes.DateOfBirth)?.Value;
             if (DateTime.TryParse(dobClaim, out var d)) parsedDob = d;
 
+            CurrentEmail = await _userManager.GetEmailAsync(user);
+
             Input = new InputModel
             {
-                NewEmail = await _userManager.GetEmailAsync(user),
+                NewEmail = CurrentEmail,
                 PhoneNumber = await _userManager.GetPhoneNumberAsync(user),
                 Name = claims.FirstOrDefault(c => c.Type == ClaimTypes.GivenName)?.Value,
                 Surname = claims.FirstOrDefault(c => c.Type == ClaimTypes.Surname)?.Value,
