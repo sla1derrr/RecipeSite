@@ -103,5 +103,11 @@
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
+<style>
+    /* Отключаем дефолтные браузерные тултипы при наведении */
+    a, button {
+        -webkit-touch-callout: none;
+    }
+</style>
 
 </html>
