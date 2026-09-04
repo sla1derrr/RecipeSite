@@ -33,7 +33,7 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 // === ИСПРАВЛЕННЫЙ БЛОК IDENTITY ===
 builder.Services.AddDefaultIdentity<ApplicationUser>(options => 
 {
-    options.SignIn.RequireConfirmedAccount = true;
+    options.SignIn.RequireConfirmedAccount = false;
     options.User.RequireUniqueEmail = true; // Запрещает регистрацию с одинаковым email
 })
 .AddEntityFrameworkStores<ApplicationDbContext>();
