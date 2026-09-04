@@ -69,6 +69,19 @@ else
 }
 
 //app.UseHttpsRedirection();
+
+// === ДОБАВЛЕННЫЙ БЛОК ДЛЯ АВАТАРОК ===
+var webRoot = app.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+var avatarsFolder = Path.Combine(webRoot, "avatars");
+Directory.CreateDirectory(avatarsFolder); // Гарантируем, что папка существует
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(avatarsFolder),
+    RequestPath = "/avatars"
+});
+// =====================================
+
 app.UseRouting();
 app.UseRequestLocalization();
 
