@@ -34,7 +34,7 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             public string NewUsername { get; set; }
 
             [BindProperty]
-            public string Avatar { get; set; } // Убедитесь, что здесь нет [Required]
+            public string Avatar { get; set; }
 
             public IFormFile AvatarFile { get; set; }
         }
@@ -82,7 +82,7 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             string selectedEmoji = Request.Form["Input.Avatar"];
             string avatarValue = !string.IsNullOrEmpty(selectedEmoji) ? selectedEmoji : Input?.Avatar;
 
-            // Если загружен файл картинки — сохраняем его
+            // Если загружен файл картинки — сохраняем его в wwwroot/avatars
             if (Input?.AvatarFile != null && Input.AvatarFile.Length > 0)
             {
                 var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "avatars");
@@ -97,7 +97,7 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 avatarValue = "/avatars/" + uniqueFileName;
             }
 
-            // Если аватар не выбран, берем старый из claims или ставим дефолтный
+            // Если аватар не выбран, берем старый из claims или оставляем дефолтный
             if (string.IsNullOrEmpty(avatarValue))
             {
                 avatarValue = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value ?? "👤";
@@ -116,3 +116,4 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             return RedirectToPage();
         }
     }
+}
