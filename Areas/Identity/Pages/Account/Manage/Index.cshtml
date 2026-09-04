@@ -15,16 +15,24 @@
         <div class="col-12">
             <div class="d-flex align-items-center p-3 rounded-3 bg-light border">
                 <div class="me-3">
-                    @if (!string.IsNullOrEmpty(Model.CurrentAvatar) && Model.CurrentAvatar.StartsWith("/"))
+                    @if (!string.IsNullOrEmpty(Model.CurrentAvatar) && (Model.CurrentAvatar.StartsWith("/") ||
+                                    Model.CurrentAvatar.StartsWith("http")))
                     {
                         <img src="@Model.CurrentAvatar" alt="Avatar" class="rounded-circle shadow-sm"
                              style="width: 65px; height: 65px; object-fit: cover;" id="avatar-preview" />
                     }
-                    else
+                    else if (!string.IsNullOrEmpty(Model.CurrentAvatar))
                     {
                         <div class="fs-1 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm"
                              style="width: 65px; height: 65px;" id="avatar-preview">
                             @Model.CurrentAvatar
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="fs-1 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm text-muted"
+                             style="width: 65px; height: 65px;" id="avatar-preview">
+                            👤
                         </div>
                     }
                 </div>
