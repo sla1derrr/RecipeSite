@@ -276,6 +276,21 @@ body {
     box-shadow: none !important;
     padding: 0 !important;
 }
+
+.goog-logo-link,
+.goog-te-gadget span {
+    display: none !important;
+}
+
+.goog-te-gadget {
+    color: transparent !important;
+}
+
+/* Центрируем текст внутри выпадающего списка */
+.goog-te-gadget .goog-te-combo {
+    text-align: center;
+    text-align-last: center;
+}
 .footer {
     width: 100%;
     white-space: nowrap;
