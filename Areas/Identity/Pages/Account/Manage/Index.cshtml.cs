@@ -45,24 +45,18 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             var nicknameClaim = claims.FirstOrDefault(c => c.Type == "Nickname")?.Value;
             var avatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value;
 
-            if (!string.IsNullOrEmpty(avatarClaim) && !avatarClaim.Contains("Avatar"))
+            // Жестко отсекаем слово "Avatar", если оно случайно записалось в базу
+            if (string.IsNullOrEmpty(avatarClaim) || avatarClaim == "Avatar" || avatarClaim.Contains("Avatar"))
             {
-                CurrentAvatar = avatarClaim;
+                avatarClaim = "👤";
             }
+
+            CurrentAvatar = avatarClaim;
 
             Input = new InputModel
             {
                 NewUsername = !string.IsNullOrEmpty(nicknameClaim) ? nicknameClaim : user.UserName ?? string.Empty
             };
-        }
-
-        public async Task<IActionResult> OnGetAsync()
-        {
-            var user = await _userManager.GetUserAsync(User);
-            if (user == null) return NotFound();
-
-            await LoadAsync(user);
-            return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
@@ -101,7 +95,7 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             }
             else
             {
-                // 3. Если файл не загружали, проверяем, какой смайлик пришел из формы
+                // 3. Смотрим, выбран ли смайлик через SelectedEmoji
                 string selectedEmoji = Request.Form["SelectedEmoji"];
                 if (!string.IsNullOrEmpty(selectedEmoji))
                 {
@@ -109,8 +103,16 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 }
                 else
                 {
-                    // Если ничего не трогали, берем старый аватар из claims
-                    avatarValue = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value ?? "👤";
+                    // Иначе берем старый аватар, но гарантированно игнорируем слово "Avatar"
+                    var oldClaim = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value;
+                    if (!string.IsNullOrEmpty(oldClaim) && oldClaim != "Avatar" && !oldClaim.Contains("Avatar"))
+                    {
+                        avatarValue = oldClaim;
+                    }
+                    else
+                    {
+                        avatarValue = "👤";
+                    }
                 }
             }
 
