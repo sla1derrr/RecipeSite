@@ -30,8 +30,15 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-builder.Services.AddDefaultIdentity<ApplicationUser>(options => options.SignIn.RequireConfirmedAccount = true)
-    .AddEntityFrameworkStores<ApplicationDbContext>();
+// === ИСПРАВЛЕННЫЙ БЛОК IDENTITY ===
+builder.Services.AddDefaultIdentity<ApplicationUser>(options => 
+{
+    options.SignIn.RequireConfirmedAccount = true;
+    options.User.RequireUniqueEmail = true; // Запрещает регистрацию с одинаковым email
+})
+.AddEntityFrameworkStores<ApplicationDbContext>();
+// ==================================
+
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient<RecipeSite.Services.MealDbService>();
 builder.Services.AddHttpClient<RecipeSite.Services.SpoonacularService>();
