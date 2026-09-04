@@ -63,12 +63,9 @@
                     @foreach (var emoji in new[] { "🍳", "🍕", "🍰", "🍜", "🍇", "🥑", "😎", "🐱", "🚀" })
                     {
                         <div class="form-check p-0">
-                            <!-- Обратите внимание: name="SelectedEmoji", а не asp-for -->
-                            <input type="radio" class="btn-check" name="SelectedEmoji" id="emoji-@emoji" value="@emoji"
-                                   autocomplete="off">
-                            <label
-                                class="btn btn-outline-danger rounded-circle p-0 fs-5 d-flex align-items-center justify-content-center shadow-sm"
-                                style="width: 45px; height: 45px; cursor: pointer;" for="emoji-@emoji">
+                            <input type="radio" class="btn-check" name="SelectedEmoji" id="emoji-@emoji" value="@emoji" autocomplete="off">
+                            <label class="btn btn-outline-danger rounded-circle p-0 fs-5 d-flex align-items-center justify-content-center shadow-sm"
+                                   style="width: 45px; height: 45px; cursor: pointer;" for="emoji-@emoji">
                                 @emoji
                             </label>
                         </div>
@@ -78,8 +75,8 @@
 
             <div class="mb-3 mt-4">
                 <label class="form-label text-muted small fw-bold">Или загрузите свою картинку</label>
-                <input type="file" id="avatarFileinput" name="Input.AvatarFile" class="form-control rounded-3 py-2"
-                       accept="image/*" />
+                <!-- Имя поля изменено на AvatarFile (без Input.) -->
+                <input type="file" id="avatarFileinput" name="AvatarFile" class="form-control rounded-3 py-2" accept="image/*" />
             </div>
         </div>
     </div>

@@ -28,10 +28,10 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
         [BindProperty]
         public InputModel Input { get; set; } = new();
 
+        // Оставляем в модели только никнейм. Файлы будем читать напрямую.
         public class InputModel
         {
             public string NewUsername { get; set; } = string.Empty;
-            public IFormFile? AvatarFile { get; set; }
         }
 
         public string CurrentAvatar { get; set; } = "👤";
@@ -39,18 +39,9 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
         private async Task LoadAsync(ApplicationUser user)
         {
             var claims = await _userManager.GetClaimsAsync(user);
-            
-            // Ищем никнейм в клаймах "Nickname", либо в UserName
             var nicknameClaim = claims.FirstOrDefault(c => c.Type == "Nickname")?.Value;
-            if (string.IsNullOrEmpty(nicknameClaim))
-            {
-                nicknameClaim = user.UserName;
-            }
-
-            // Ищем аватар в клаймах "Avatar"
             var avatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value;
 
-            // Если в клаймах пусто, проверяем, вдруг аватар сохранен в свойствах пользователя
             if (string.IsNullOrEmpty(avatarClaim) || avatarClaim == "Avatar" || avatarClaim.Contains("Avatar"))
             {
                 avatarClaim = user.AvatarUrl ?? user.AvatarPreset ?? "👤";
@@ -60,7 +51,7 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
 
             Input = new InputModel
             {
-                NewUsername = nicknameClaim ?? string.Empty
+                NewUsername = !string.IsNullOrEmpty(nicknameClaim) ? nicknameClaim : user.UserName ?? string.Empty
             };
         }
 
@@ -80,63 +71,53 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
 
             var claims = await _userManager.GetClaimsAsync(user);
 
-            // 1. Сохраняем никнейм (и в клайм, и в сам UserName, чтобы везде было актуально)
+            // 1. Сохраняем никнейм
             if (!string.IsNullOrEmpty(Input?.NewUsername))
             {
                 var oldNicknameClaim = claims.FirstOrDefault(c => c.Type == "Nickname");
-                if (oldNicknameClaim != null)
-                {
-                    await _userManager.RemoveClaimAsync(user, oldNicknameClaim);
-                }
+                if (oldNicknameClaim != null) await _userManager.RemoveClaimAsync(user, oldNicknameClaim);
                 await _userManager.AddClaimAsync(user, new Claim("Nickname", Input.NewUsername));
 
-                // Также обновляем стандартный UserName, чтобы Identity не ругался
-                if (user.UserName != Input.NewUsername)
-                {
-                    await _userManager.SetUserNameAsync(user, Input.NewUsername);
-                }
+                if (user.UserName != Input.NewUsername) await _userManager.SetUserNameAsync(user, Input.NewUsername);
             }
 
             string avatarValue = string.Empty;
 
-            // 2. Проверяем, загрузил ли пользователь файл картинки
-            if (Input?.AvatarFile != null && Input.AvatarFile.Length > 0)
+            // 2. БЕЗОТКАЗНЫЙ СПОСОБ: читаем файл напрямую из запроса
+            var uploadedFile = HttpContext.Request.Form.Files.FirstOrDefault();
+
+            if (uploadedFile != null && uploadedFile.Length > 0)
             {
                 var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "avatars");
                 Directory.CreateDirectory(uploadsFolder);
-                var uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(Input.AvatarFile.FileName);
+                var uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(uploadedFile.FileName);
                 var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
                 using (var fileStream = new FileStream(filePath, FileMode.Create))
                 {
-                    await Input.AvatarFile.CopyToAsync(fileStream);
+                    await uploadedFile.CopyToAsync(fileStream);
                 }
                 avatarValue = "/avatars/" + uniqueFileName;
             }
             else
             {
-                // 3. Проверяем, выбран ли смайлик
-                string selectedEmoji = Request.Form["SelectedEmoji"];
+                // 3. Если файла нет, читаем смайлик напрямую из формы
+                string selectedEmoji = HttpContext.Request.Form["SelectedEmoji"];
                 if (!string.IsNullOrEmpty(selectedEmoji))
                 {
                     avatarValue = selectedEmoji;
                 }
                 else
                 {
-                    // Оставляем старый аватар из клаймов или дефолтный
+                    // Если вообще ничего не трогали — берем текущий
                     var oldClaim = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value;
-                    avatarValue = (!string.IsNullOrEmpty(oldClaim) && oldClaim != "Avatar" && !oldClaim.Contains("Avatar")) 
-                        ? oldClaim 
-                        : "👤";
+                    avatarValue = (!string.IsNullOrEmpty(oldClaim) && oldClaim != "Avatar" && !oldClaim.Contains("Avatar")) ? oldClaim : "👤";
                 }
             }
 
             // 4. Перезаписываем Claim аватара
             var oldAvatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar");
-            if (oldAvatarClaim != null)
-            {
-                await _userManager.RemoveClaimAsync(user, oldAvatarClaim);
-            }
+            if (oldAvatarClaim != null) await _userManager.RemoveClaimAsync(user, oldAvatarClaim);
             await _userManager.AddClaimAsync(user, new Claim("Avatar", avatarValue));
 
             await _signInManager.RefreshSignInAsync(user);
