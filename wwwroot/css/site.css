@@ -334,3 +334,24 @@ body {
     transform-origin: 0% 100%;
     clip-path: polygon(0 0, 100% 0, 0 100%);
 }
+/* Базовый стиль для ссылок в шапке */
+.navbar-nav .nav-link {
+    transition: all 0.3s ease; /* Плавная анимация изменения */
+    border-radius: 25px; /* Закругленные края для эффекта пузыря */
+    padding: 8px 16px !important; /* Отступы внутри пузыря */
+    margin: 0 4px; /* Отступы между соседними кнопками */
+    text-decoration: none !important; /* Убираем стандартное подчеркивание */
+}
+
+/* Эффект при наведении курсора */
+.navbar-nav .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.25); /* Полупрозрачный белый фон */
+    transform: scale(1.08); /* Легкое увеличение на 8% */
+    color: #ffffff !important; /* Сохраняем текст белым */
+}
+
+/* (По желанию) Выделение активной (текущей) страницы таким же пузырем, но чуть прозрачнее */
+.navbar-nav .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.15);
+    font-weight: 600;
+}
