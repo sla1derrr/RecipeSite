@@ -6,7 +6,7 @@
     var count = items.Count;
     var sliceAngle = count > 0 ? 360.0 / count : 360.0;
 
-    // Единая палитра цветов для колеса и легенды
+    // Единая палитра цветов для секторов и легенды
     var palette = new List<string>();
     for (int i = 0; i < count; i++)
     {
@@ -29,7 +29,7 @@
         </div>
 
         <div class="row align-items-center g-4">
-            <!-- Левая колонка: Большое колесо -->
+            <!-- Левая колонка: Большое чистое колесо -->
             <div class="col-lg-7 text-center position-relative py-3">
                 <div class="wheel-container d-inline-block position-relative">
                     <!-- Указатель сверху -->
@@ -49,18 +49,8 @@
                         var gradientCss = string.Join(", ", gradientStops);
                     }
 
-                    <!-- Большое колесо (440px) -->
+                    <!-- Большое колесо без текста (440px) -->
                     <div id="wheel" class="wheel shadow-lg mx-auto" style="background: conic-gradient(@gradientCss); width: 440px; height: 440px; border-radius: 50%; position: relative; overflow: hidden; border: 8px solid #fff;">
-                        @for (int i = 0; i < count; i++)
-                        {
-                            // Смещаем текст ровно на середину сектора
-                            var angle = i * sliceAngle + (sliceAngle / 2);
-                            <div class="wheel-label-container" style="position: absolute; width: 50%; height: 30px; top: 50%; left: 50%; transform-origin: 0% 0%; transform: rotate(@angle.ToString(System.Globalization.CultureInfo.InvariantCulture)deg); pointer-events: none;">
-                                <span class="wheel-text" style="position: absolute; left: 35px; top: 50%; transform: translateY(-50%); max-width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; font-weight: bold; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">
-                                    @items[i].Title
-                                </span>
-                            </div>
-                        }
                     </div>
                 </div>
 
@@ -75,13 +65,13 @@
             <div class="col-lg-5">
                 <div class="p-3 rounded-4 bg-light border mb-4">
                     <h6 class="fw-bold mb-3 text-dark">Варианты на колесе (@count)</h6>
-                    <div style="max-height: 230px; overflow-y: auto;" class="pe-2">
+                    <div style="max-height: 250px; overflow-y: auto;" class="pe-2">
                         @for (int i = 0; i < count; i++)
                         {
                             var color = palette[i];
                             <div class="d-flex align-items-center mb-2 legend-item p-2 rounded-3 bg-white border-0 shadow-sm" data-index="@i">
-                                <div style="width:14px; height:14px; border-radius:4px; background:@color; margin-right:10px; flex-shrink:0;"></div>
-                                <span class="small text-dark text-truncate">@items[i].Title</span>
+                                <div style="width:16px; height:16px; border-radius:4px; background:@color; margin-right:12px; flex-shrink:0;"></div>
+                                <span class="small text-dark text-truncate fw-medium">@items[i].Title</span>
                             </div>
                         }
                     </div>
