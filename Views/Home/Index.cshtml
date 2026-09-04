@@ -1,84 +1,85 @@
-﻿@{
-    ViewData["Title"] = "Главная";
-    var facts = ViewBag.Facts as List<string> ?? new List<string>();
-}
-
-<div class="hero-section text-center">
-    <img src="https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=1200&q=80"
-         alt="Кулинария" class="hero-image" />
-    <div class="hero-text">
-        <h1>Наша книга рецептов 🍲</h1>
-        <p class="lead">
-            Здесь собраны любимые блюда — от быстрых завтраков до праздничных ужинов.
-            Сохраняй рецепты из TikTok и Instagram, добавляй свои и готовь с удовольствием.
-        </p>
-        @if (User.Identity != null && User.Identity.IsAuthenticated)
-        {
-            <a asp-controller="Recipes" asp-action="MyRecipes" class="btn btn-primary btn-lg mt-3">Мои рецепты</a>
-        }
-        else
-        {
-            <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-primary btn-lg mt-3">Начать</a>
-        }
-    </div>
-</div>
-
-<div class="container mt-5">
+﻿<div class="container mt-5">
     <div class="row">
-        <!-- Левая колонка: факты -->
-        <div class="col-md-3 mb-4">
-            <div class="card p-3 shadow-sm soft-card">
-                <h6 class="fw-bold mb-3">💡 А знаете ли вы?</h6>
-                @if (facts.Count > 0)
-                {
-                    @for (int i = 0; i < facts.Count && i < 2; i++)
-                    {
-                        <p class="small text-muted mb-3">@facts[i]</p>
-                    }
-                }
-                else
-                {
-                    <p class="small text-muted">Факты временно недоступны 🙈</p>
-                }
+        <!-- Левая колонка: Факты друг под другом -->
+        <div class="col-lg-3 mb-4">
+            <div class="card shadow-sm border-0 rounded-3 mb-4">
+                <div class="card-body">
+                    <h6 class="card-title fw-bold text-warning mb-3">💡 А знаете ли вы?</h6>
+                    <p class="card-text text-muted small border-bottom pb-2">На каждую «обычную» веб-страничку приходится пять страниц с порнографическим содержанием.</p>
+                    <p class="card-text text-muted small mb-0">The letters KGB stand for Komitet Gosudarstvennoy Bezopasnosti.</p>
+                </div>
             </div>
-        </div>
 
-        <!-- Центр: основной контент -->
-        <div class="col-md-6 mb-4">
-            <div class="row text-center">
-                <div class="col-12 mb-4">
-                    <div style="font-size:40px;">🍜</div>
-                    <h4>Разделы блюд</h4>
-                    <p>Супы, вторые, сладкое и многое другое — всё разложено по полочкам.</p>
-                </div>
-                <div class="col-12 mb-4">
-                    <div style="font-size:40px;">📱</div>
-                    <h4>Сохраняй из соцсетей</h4>
-                    <p>Увидела рецепт в TikTok или Instagram? Просто вставь ссылку и сохрани его к себе.</p>
-                </div>
-                <div class="col-12 mb-4">
-                    <div style="font-size:40px;">✨</div>
-                    <h4>Картинка автоматически</h4>
-                    <p>Придумай название блюду — картинка для него сгенерируется сама.</p>
+            <div class="card shadow-sm border-0 rounded-3 sticky-top" style="top: 20px;">
+                <div class="card-body">
+                    <h6 class="card-title fw-bold text-danger mb-3">📌 Ещё интересное</h6>
+                    <p class="card-text text-muted small border-bottom pb-2">В Вермонте соотношение коров и людей составляет 10:1.</p>
+                    <p class="card-text text-muted small mb-0">В XVI веке на Филиппинах йо-йо использовалось в качестве оружия.</p>
                 </div>
             </div>
         </div>
 
-        <!-- Правая колонка: ещё факты -->
-        <div class="col-md-3 mb-4">
-            <div class="card p-3 shadow-sm soft-card">
-                <h6 class="fw-bold mb-3">🍽 Ещё интересное</h6>
-                @if (facts.Count > 2)
-                {
-                    @for (int i = 2; i < facts.Count && i < 4; i++)
-                    {
-                        <p class="small text-muted mb-3">@facts[i]</p>
-                    }
-                }
-                else
-                {
-                    <p class="small text-muted">Обновится при следующем заходе на сайт 🔄</p>
-                }
+        <!-- Правая колонка: Основной контент с функциями -->
+        <div class="col-lg-9">
+            <div class="px-3">
+                <h2 class="fw-bold mb-3">Добро пожаловать в Foodify 🍳</h2>
+                <p class="text-muted fs-5 mb-5">Ваш личный кулинарный помощник. Мы создали платформу, чтобы избавить вас от хаоса в заметках и закладках. Храните, организуйте и готовьте с удовольствием. Вот что можно делать на сайте:</p>
+
+                <div class="row g-4">
+                    <!-- Существующая функция 1 -->
+                    <div class="col-md-6">
+                        <div class="p-4 bg-white shadow-sm border-0 rounded-3 h-100 transition-hover">
+                            <div class="fs-1 mb-3">🍱</div>
+                            <h5 class="fw-bold">Удобные разделы блюд</h5>
+                            <p class="text-muted small">Супы, вторые блюда, десерты и многое другое — всё разложено по полочкам для быстрого поиска.</p>
+                        </div>
+                    </div>
+
+                    <!-- Существующая функция 2 -->
+                    <div class="col-md-6">
+                        <div class="p-4 bg-white shadow-sm border-0 rounded-3 h-100 transition-hover">
+                            <div class="fs-1 mb-3">📱</div>
+                            <h5 class="fw-bold">Сохраняй из соцсетей</h5>
+                            <p class="text-muted small">Увидели крутой рецепт в TikTok или Instagram? Просто вставьте ссылку, и мы сохраним его к вам в книгу.</p>
+                        </div>
+                    </div>
+
+                    <!-- Существующая функция 3 -->
+                    <div class="col-md-6">
+                        <div class="p-4 bg-white shadow-sm border-0 rounded-3 h-100 transition-hover">
+                            <div class="fs-1 mb-3">✨</div>
+                            <h5 class="fw-bold">Умные картинки</h5>
+                            <p class="text-muted small">Нет подходящего фото для рецепта? Придумайте название блюду, а картинка сгенерируется автоматически.</p>
+                        </div>
+                    </div>
+
+                    <!-- Новая функция 4 -->
+                    <div class="col-md-6">
+                        <div class="p-4 bg-white shadow-sm border-0 rounded-3 h-100 transition-hover">
+                            <div class="fs-1 mb-3">🛒</div>
+                            <h5 class="fw-bold">Авто-список покупок</h5>
+                            <p class="text-muted small">Добавьте блюда в план на неделю, и Foodify сам соберет все нужные ингредиенты в удобный список для магазина.</p>
+                        </div>
+                    </div>
+
+                    <!-- Новая функция 5 -->
+                    <div class="col-md-6">
+                        <div class="p-4 bg-white shadow-sm border-0 rounded-3 h-100 transition-hover">
+                            <div class="fs-1 mb-3">⏱️</div>
+                            <h5 class="fw-bold">Поиск по времени</h5>
+                            <p class="text-muted small">Мало времени? Найдите рецепты, на приготовление которых уйдет не больше 15, 30 или 45 минут.</p>
+                        </div>
+                    </div>
+
+                    <!-- Новая функция 6 -->
+                    <div class="col-md-6">
+                        <div class="p-4 bg-white shadow-sm border-0 rounded-3 h-100 transition-hover">
+                            <div class="fs-1 mb-3">🥑</div>
+                            <h5 class="fw-bold">Холодильник</h5>
+                            <p class="text-muted small">Впишите продукты, которые у вас сейчас есть, и мы подскажем, какое блюдо из них можно приготовить прямо сейчас.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
