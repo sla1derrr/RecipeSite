@@ -19,7 +19,7 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
         private readonly IWebHostEnvironment _env; // Добавлено для точного пути к wwwroot
 
         public IndexModel(
-            UserManager<ApplicationUser> userManager, 
+            UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IWebHostEnvironment env)
         {
@@ -41,10 +41,10 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
 
         // ЖЕСТКАЯ ПРИВЯЗКА ФАЙЛА И СМАЙЛИКА НАПРЯМУЮ К СТРАНИЦЕ
         [BindProperty]
-        public IFormFile UploadedAvatar { get; set; }
+        public IFormFile? UploadedAvatar { get; set; }
 
         [BindProperty]
-        public string SelectedEmoji { get; set; }
+        public string? SelectedEmoji { get; set; }
 
         public string CurrentAvatar { get; set; } = "👤";
 
@@ -80,7 +80,8 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return NotFound();
-
+            ModelState.Remove("UploadedAvatar");
+            ModelState.Remove("SelectedEmoji");
             var claims = await _userManager.GetClaimsAsync(user);
 
             // 1. Сохраняем никнейм
