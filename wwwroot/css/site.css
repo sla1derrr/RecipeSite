@@ -411,3 +411,19 @@ body {
 #goog-gt-tt {
     display: none !important;
 }
+/* Стили для бокового меню в настройках профиля */
+.custom-manage-nav .nav-link {
+    color: #4a4a4a;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    padding: 10px 16px;
+}
+.custom-manage-nav .nav-link:hover {
+    background-color: #f8f9fa;
+    transform: translateX(4px);
+}
+.custom-manage-nav .nav-link.active {
+    background-color: #fff0f4 !important;
+    color: #ff6b8b !important;
+    font-weight: 600;
+}

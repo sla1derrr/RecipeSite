@@ -1,0 +1,31 @@
+@{
+    Layout = "/Areas/Identity/Pages/_Layout.cshtml";
+}
+
+<div class="container mt-4">
+    <!-- Шапка профиля -->
+    <div class="p-4 mb-4 text-center shadow-sm rounded-4" style="background: linear-gradient(135deg, #fff5f7 0%, #ffffff 100%); border: 1px solid rgba(255, 107, 139, 0.1);">
+        <h2 class="fw-bold mb-0" style="color: #ff6b8b;">Настройки аккаунта</h2>
+        <p class="text-muted mt-2 mb-0">Управляйте своим профилем и параметрами безопасности</p>
+    </div>
+
+    <div class="row">
+        <!-- Боковое меню -->
+        <div class="col-md-4 col-lg-3 mb-4">
+            <div class="card shadow-sm border-0 rounded-3 p-3 sticky-top" style="top: 20px;">
+                <partial name="_ManageNav" />
+            </div>
+        </div>
+        
+        <!-- Основной контент (Форма) -->
+        <div class="col-md-8 col-lg-9">
+            <div class="card shadow-sm border-0 rounded-3 p-4">
+                @RenderBody()
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @RenderSection("Scripts", required: false)
+}
