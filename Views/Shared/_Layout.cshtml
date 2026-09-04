@@ -17,11 +17,45 @@
 </head>
 
 <body>
-    <div id="google_translate_element" style="position:fixed; bottom:15px; right:15px; z-index:1000;"></div>
+    <!-- Скрытый оригинальный виджет Google Translate -->
+    <div id="google_translate_element" style="display:none;"></div>
+
+    <!-- Наш красивый кастомный переключатель (Dropup - открывается вверх) -->
+    <div class="dropdown dropup" style="position:fixed; bottom:20px; right:20px; z-index:1000;">
+        <button class="btn btn-primary rounded-pill dropdown-toggle px-3 shadow"
+                style="background-color: #ff6b8b; border: none;" type="button" data-bs-toggle="dropdown"
+                aria-expanded="false">
+            🌍 Язык
+        </button>
+        <ul class="dropdown-menu border-0 shadow-sm mb-2">
+            <li><a class="dropdown-item custom-lang-btn" href="#" data-lang="ru">Русский</a></li>
+            <li><a class="dropdown-item custom-lang-btn" href="#" data-lang="en">English</a></li>
+            <li><a class="dropdown-item custom-lang-btn" href="#" data-lang="pl">Polski</a></li>
+            <li><a class="dropdown-item custom-lang-btn" href="#" data-lang="uk">Українська</a></li>
+        </ul>
+    </div>
+
     <script type="text/javascript">
         function googleTranslateElementInit() {
-        new google.translate.TranslateElement({ pageLanguage: 'auto', includedLanguages: 'ru,en,uk,pl', gaTrack: false }, 'google_translate_element');
+        new google.translate.TranslateElement({
+        pageLanguage: 'ru',
+        includedLanguages: 'ru,en,pl,uk',
+        autoDisplay: false
+        }, 'google_translate_element');
         }
+
+        // Скрипт, который передает выбор из нашего красивого меню в скрытый гугл-переводчик
+        document.addEventListener("click", function (e) {
+        if (e.target.classList.contains("custom-lang-btn")) {
+        e.preventDefault();
+        let lang = e.target.getAttribute("data-lang");
+        let gtSelect = document.querySelector(".goog-te-combo");
+        if (gtSelect) {
+        gtSelect.value = lang;
+        gtSelect.dispatchEvent(new Event("change"));
+        }
+        }
+        });
     </script>
     <script type="text/javascript"
             src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
