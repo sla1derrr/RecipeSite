@@ -56,16 +56,24 @@
         </div>
 
         <!-- Правая колонка: Выбор смайлика или файла -->
+        <!-- Правая колонка: Выбор смайлика или файла -->
         <div class="col-lg-6 border-start ps-lg-4 mt-4 mt-lg-0">
             <div class="mb-3">
                 <label class="form-label text-muted small fw-bold">Выберите стандартный смайлик</label>
                 <div class="d-flex flex-wrap gap-2 mt-1">
+                    @{
+                        int i = 0;
+                    }
                     @foreach (var emoji in new[] { "🍳", "🍕", "🍰", "🍜", "🍇", "🥑", "😎", "🐱", "🚀" })
                     {
+                        i++;
                         <div class="form-check p-0">
-                            <input type="radio" class="btn-check" name="SelectedEmoji" id="emoji-@emoji" value="@emoji" autocomplete="off">
-                            <label class="btn btn-outline-danger rounded-circle p-0 fs-5 d-flex align-items-center justify-content-center shadow-sm"
-                                   style="width: 45px; height: 45px; cursor: pointer;" for="emoji-@emoji">
+                            <!-- Заменено на asp-for="SelectedEmoji" и безопасные ID -->
+                            <input type="radio" class="btn-check" asp-for="SelectedEmoji" id="emoji-@i" value="@emoji"
+                                   autocomplete="off">
+                            <label
+                                class="btn btn-outline-danger rounded-circle p-0 fs-5 d-flex align-items-center justify-content-center shadow-sm"
+                                style="width: 45px; height: 45px; cursor: pointer;" for="emoji-@i">
                                 @emoji
                             </label>
                         </div>
@@ -75,8 +83,9 @@
 
             <div class="mb-3 mt-4">
                 <label class="form-label text-muted small fw-bold">Или загрузите свою картинку</label>
-                <!-- Имя поля изменено на AvatarFile (без Input.) -->
-                <input type="file" id="avatarFileinput" name="AvatarFile" class="form-control rounded-3 py-2" accept="image/*" />
+                <!-- Заменено на asp-for="UploadedAvatar" -->
+                <input type="file" asp-for="UploadedAvatar" id="avatarFileinput" class="form-control rounded-3 py-2"
+                       accept="image/*" />
             </div>
         </div>
     </div>
@@ -121,9 +130,9 @@
 
         // Если кликнули на смайлик -> очищаем выбранный файл
         emojiRadios.forEach(radio => {
-            radio.addEventListener('change', function() {
-                fileInput.value = ''; 
-                
+            radio.addEventListener('change', function () {
+                fileInput.value = '';
+
                 // Визуально меняем превью на смайлик
                 const preview = document.getElementById('avatar-preview');
                 const newDiv = document.createElement('div');
