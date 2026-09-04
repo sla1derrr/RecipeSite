@@ -32,11 +32,12 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
         {
             public string NewUsername { get; set; } = string.Empty;
 
-            public string Avatar { get; set; } = string.Empty;
-
-            [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever]
+            // Убираем отсюда вообще всё, что связано с Avatar, оставляя только файл
             public IFormFile? AvatarFile { get; set; }
         }
+
+        // Это свойство будет хранить текущий аватар для отображения на странице в GET-запросе
+        public string CurrentAvatar { get; set; } = "👤";
 
         private async Task LoadAsync(ApplicationUser user)
         {
@@ -44,15 +45,14 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             var nicknameClaim = claims.FirstOrDefault(c => c.Type == "Nickname")?.Value;
             var avatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value;
 
-            if (string.IsNullOrEmpty(avatarClaim) || avatarClaim.Contains("Avatar") || (avatarClaim.Length > 100 && !avatarClaim.StartsWith("/")))
+            if (!string.IsNullOrEmpty(avatarClaim) && !avatarClaim.Contains("Avatar"))
             {
-                avatarClaim = "👤";
+                CurrentAvatar = avatarClaim;
             }
 
             Input = new InputModel
             {
-                NewUsername = !string.IsNullOrEmpty(nicknameClaim) ? nicknameClaim : user.UserName ?? string.Empty,
-                Avatar = avatarClaim
+                NewUsername = !string.IsNullOrEmpty(nicknameClaim) ? nicknameClaim : user.UserName ?? string.Empty
             };
         }
 
@@ -69,9 +69,6 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return NotFound();
-
-            // Убираем ошибку валидации текстового аватара, если пользователь выбрал смайлик или файл
-            ModelState.Remove("Input.Avatar");
 
             var claims = await _userManager.GetClaimsAsync(user);
 
@@ -104,14 +101,15 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             }
             else
             {
-                // 3. Если файл не загружали, смотрим, выбран ли смайлик
-                string selectedEmoji = Request.Form["Input.Avatar"];
+                // 3. Если файл не загружали, проверяем, какой смайлик пришел из формы
+                string selectedEmoji = Request.Form["SelectedEmoji"];
                 if (!string.IsNullOrEmpty(selectedEmoji))
                 {
                     avatarValue = selectedEmoji;
                 }
                 else
                 {
+                    // Если ничего не трогали, берем старый аватар из claims
                     avatarValue = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value ?? "👤";
                 }
             }
