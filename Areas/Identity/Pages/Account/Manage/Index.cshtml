@@ -90,7 +90,13 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        document.getElementById('avatarFileinput').addEventListener('change', function (event) {
+        const fileInput = document.getElementById('avatarFileinput');
+        const emojiRadios = document.querySelectorAll('input[name="SelectedEmoji"]');
+
+        // Если выбрали файл -> снимаем выделение со всех смайликов
+        fileInput.addEventListener('change', function (event) {
+            emojiRadios.forEach(radio => radio.checked = false);
+
             const file = event.target.files[0];
             if (file) {
                 const reader = new FileReader();
@@ -111,6 +117,23 @@
                 }
                 reader.readAsDataURL(file);
             }
+        });
+
+        // Если кликнули на смайлик -> очищаем выбранный файл
+        emojiRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                fileInput.value = ''; 
+                
+                // Визуально меняем превью на смайлик
+                const preview = document.getElementById('avatar-preview');
+                const newDiv = document.createElement('div');
+                newDiv.className = 'fs-1 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm';
+                newDiv.style.width = '65px';
+                newDiv.style.height = '65px';
+                newDiv.id = 'avatar-preview';
+                newDiv.innerText = this.value;
+                preview.parentNode.replaceChild(newDiv, preview);
+            });
         });
     </script>
 }
