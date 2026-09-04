@@ -43,11 +43,18 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
         {
             var claims = await _userManager.GetClaimsAsync(user);
             var nicknameClaim = claims.FirstOrDefault(c => c.Type == "Nickname")?.Value;
+            var avatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value;
+
+            // Если аватарка — это битая строка или слово "Avatar", сбрасываем ее до смайлика
+            if (string.IsNullOrEmpty(avatarClaim) || avatarClaim.Contains("Avatar") || avatarClaim.Length > 100 && !avatarClaim.StartsWith("/"))
+            {
+                avatarClaim = "👤";
+            }
 
             Input = new InputModel
             {
                 NewUsername = !string.IsNullOrEmpty(nicknameClaim) ? nicknameClaim : user.UserName,
-                Avatar = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value ?? "👤"
+                Avatar = avatarClaim
             };
         }
 
