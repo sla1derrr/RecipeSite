@@ -67,8 +67,8 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
 
             var claims = await _userManager.GetClaimsAsync(user);
 
-            // Сохраняем кастомный никнейм в Claims, чтобы он не сбрасывался на почту
-            if (!string.IsNullOrEmpty(Input.NewUsername))
+            // Сохраняем кастомный никнейм в Claims
+            if (!string.IsNullOrEmpty(Input?.NewUsername))
             {
                 var oldNicknameClaim = claims.FirstOrDefault(c => c.Type == "Nickname");
                 if (oldNicknameClaim != null)
@@ -78,10 +78,12 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 await _userManager.AddClaimAsync(user, new Claim("Nickname", Input.NewUsername));
             }
 
-            string avatarValue = Input.Avatar;
+            // Надежно считываем выбранный смайлик напрямую из формы, если модель его не поймала
+            string selectedEmoji = Request.Form["Input.Avatar"];
+            string avatarValue = !string.IsNullOrEmpty(selectedEmoji) ? selectedEmoji : Input?.Avatar;
 
-            // Если загружен файл картинки — сохраняем его
-            if (Input.AvatarFile != null && Input.AvatarFile.Length > 0)
+            // Если загружен файл картинки — сохраняем его в wwwroot/avatars
+            if (Input?.AvatarFile != null && Input.AvatarFile.Length > 0)
             {
                 var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "avatars");
                 Directory.CreateDirectory(uploadsFolder);
@@ -95,8 +97,8 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 avatarValue = "/avatars/" + uniqueFileName;
             }
 
-            // Если смайлик не выбран и файл не загружен, оставляем старый аватар из базы
-            if (string.IsNullOrEmpty(avatarValue) || avatarValue == "👤")
+            // Если ничего не выбрано и нет файла, оставляем старый аватар
+            if (string.IsNullOrEmpty(avatarValue))
             {
                 avatarValue = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value ?? "👤";
             }
