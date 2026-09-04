@@ -7,15 +7,16 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using RecipeSite.Models;
 
 namespace RecipeSite.Areas.Identity.Pages.Account.Manage
 {
     public class IndexModel : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager;
-        private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
 
-        public IndexModel(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager)
+        public IndexModel(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -34,7 +35,7 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             public IFormFile AvatarFile { get; set; }
         }
 
-        private async Task LoadAsync(IdentityUser user)
+        private async Task LoadAsync(ApplicationUser user)
         {
             var claims = await _userManager.GetClaimsAsync(user);
             Input = new InputModel
@@ -64,7 +65,6 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 return Page();
             }
 
-            // Обновление никнейма
             var currentUsername = await _userManager.GetUserNameAsync(user);
             if (Input.NewUsername != currentUsername && !string.IsNullOrEmpty(Input.NewUsername))
             {
@@ -76,10 +76,8 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 }
             }
 
-            // Обработка аватарки
             string avatarValue = Input.Avatar;
 
-            // Если пользователь загрузил свою картинку
             if (Input.AvatarFile != null && Input.AvatarFile.Length > 0)
             {
                 var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "avatars");
@@ -94,7 +92,6 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 avatarValue = "/avatars/" + uniqueFileName;
             }
 
-            // Сохраняем аватарку в Claims
             if (!string.IsNullOrEmpty(avatarValue))
             {
                 var claims = await _userManager.GetClaimsAsync(user);
