@@ -34,7 +34,7 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             public string NewUsername { get; set; }
 
             [BindProperty]
-            public string Avatar { get; set; }
+            public string Avatar { get; set; } // Убедитесь, что здесь нет [Required]
 
             public IFormFile AvatarFile { get; set; }
         }
@@ -78,11 +78,11 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 await _userManager.AddClaimAsync(user, new Claim("Nickname", Input.NewUsername));
             }
 
-            // Надежно считываем выбранный смайлик напрямую из формы, если модель его не поймала
+            // Считываем выбранный смайлик из формы или модели
             string selectedEmoji = Request.Form["Input.Avatar"];
             string avatarValue = !string.IsNullOrEmpty(selectedEmoji) ? selectedEmoji : Input?.Avatar;
 
-            // Если загружен файл картинки — сохраняем его в wwwroot/avatars
+            // Если загружен файл картинки — сохраняем его
             if (Input?.AvatarFile != null && Input.AvatarFile.Length > 0)
             {
                 var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "avatars");
@@ -97,13 +97,13 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 avatarValue = "/avatars/" + uniqueFileName;
             }
 
-            // Если ничего не выбрано и нет файла, оставляем старый аватар
+            // Если аватар не выбран, берем старый из claims или ставим дефолтный
             if (string.IsNullOrEmpty(avatarValue))
             {
                 avatarValue = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value ?? "👤";
             }
 
-            // Сохраняем аватарку в Claims
+            // Перезаписываем Claim аватара
             var oldAvatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar");
             if (oldAvatarClaim != null)
             {
@@ -116,4 +116,3 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             return RedirectToPage();
         }
     }
-}
