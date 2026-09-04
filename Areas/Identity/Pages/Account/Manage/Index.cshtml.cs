@@ -99,9 +99,11 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             // 2. Бронированный способ обработки файла
             if (UploadedAvatar != null && UploadedAvatar.Length > 0)
             {
-                // Используем _env.WebRootPath, чтобы на Railway файл точно попал куда надо
-                var uploadsFolder = Path.Combine(_env.WebRootPath, "avatars");
+                // Защита на случай, если WebRootPath == null (часто бывает на Railway)
+                var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                var uploadsFolder = Path.Combine(webRoot, "avatars");
                 Directory.CreateDirectory(uploadsFolder);
+
                 var uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(UploadedAvatar.FileName);
                 var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
@@ -123,9 +125,12 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 avatarValue = (!string.IsNullOrEmpty(oldClaim) && oldClaim != "Avatar" && !oldClaim.Contains("Avatar")) ? oldClaim : "👤";
             }
 
-            // Перезаписываем Claim аватара
-            var oldAvatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar");
-            if (oldAvatarClaim != null) await _userManager.RemoveClaimAsync(user, oldAvatarClaim);
+            // ПРАВИЛЬНАЯ ПЕРЕЗАПИСЬ CLAIM: Находим и удаляем ВСЕ старые записи аватара
+            var oldAvatarClaims = claims.Where(c => c.Type == "Avatar").ToList();
+            if (oldAvatarClaims.Any())
+            {
+                await _userManager.RemoveClaimsAsync(user, oldAvatarClaims);
+            }
             await _userManager.AddClaimAsync(user, new Claim("Avatar", avatarValue));
 
             await _signInManager.RefreshSignInAsync(user);

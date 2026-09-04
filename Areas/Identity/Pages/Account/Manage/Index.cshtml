@@ -68,8 +68,8 @@
                     {
                         i++;
                         <div class="form-check p-0">
-                            <!-- Заменено на asp-for="SelectedEmoji" и безопасные ID -->
-                            <input type="radio" class="btn-check" asp-for="SelectedEmoji" id="emoji-@i" value="@emoji"
+                            <!-- Заменено asp-for на name="SelectedEmoji" -->
+                            <input type="radio" class="btn-check" name="SelectedEmoji" id="emoji-@i" value="@emoji"
                                    autocomplete="off">
                             <label
                                 class="btn btn-outline-danger rounded-circle p-0 fs-5 d-flex align-items-center justify-content-center shadow-sm"
