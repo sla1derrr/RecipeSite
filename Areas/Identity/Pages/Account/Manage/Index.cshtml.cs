@@ -31,32 +31,46 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
         public class InputModel
         {
             public string NewUsername { get; set; } = string.Empty;
-
-            // Убираем отсюда вообще всё, что связано с Avatar, оставляя только файл
             public IFormFile? AvatarFile { get; set; }
         }
 
-        // Это свойство будет хранить текущий аватар для отображения на странице в GET-запросе
         public string CurrentAvatar { get; set; } = "👤";
 
         private async Task LoadAsync(ApplicationUser user)
         {
             var claims = await _userManager.GetClaimsAsync(user);
+            
+            // Ищем никнейм в клаймах "Nickname", либо в UserName
             var nicknameClaim = claims.FirstOrDefault(c => c.Type == "Nickname")?.Value;
+            if (string.IsNullOrEmpty(nicknameClaim))
+            {
+                nicknameClaim = user.UserName;
+            }
+
+            // Ищем аватар в клаймах "Avatar"
             var avatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value;
 
-            // Жестко отсекаем слово "Avatar", если оно случайно записалось в базу
+            // Если в клаймах пусто, проверяем, вдруг аватар сохранен в свойствах пользователя
             if (string.IsNullOrEmpty(avatarClaim) || avatarClaim == "Avatar" || avatarClaim.Contains("Avatar"))
             {
-                avatarClaim = "👤";
+                avatarClaim = user.AvatarUrl ?? user.AvatarPreset ?? "👤";
             }
 
             CurrentAvatar = avatarClaim;
 
             Input = new InputModel
             {
-                NewUsername = !string.IsNullOrEmpty(nicknameClaim) ? nicknameClaim : user.UserName ?? string.Empty
+                NewUsername = nicknameClaim ?? string.Empty
             };
+        }
+
+        public async Task<IActionResult> OnGetAsync()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return NotFound();
+
+            await LoadAsync(user);
+            return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
@@ -66,7 +80,7 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
 
             var claims = await _userManager.GetClaimsAsync(user);
 
-            // 1. Сохраняем кастомный никнейм в Claims
+            // 1. Сохраняем никнейм (и в клайм, и в сам UserName, чтобы везде было актуально)
             if (!string.IsNullOrEmpty(Input?.NewUsername))
             {
                 var oldNicknameClaim = claims.FirstOrDefault(c => c.Type == "Nickname");
@@ -75,6 +89,12 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                     await _userManager.RemoveClaimAsync(user, oldNicknameClaim);
                 }
                 await _userManager.AddClaimAsync(user, new Claim("Nickname", Input.NewUsername));
+
+                // Также обновляем стандартный UserName, чтобы Identity не ругался
+                if (user.UserName != Input.NewUsername)
+                {
+                    await _userManager.SetUserNameAsync(user, Input.NewUsername);
+                }
             }
 
             string avatarValue = string.Empty;
@@ -95,7 +115,7 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             }
             else
             {
-                // 3. Смотрим, выбран ли смайлик через SelectedEmoji
+                // 3. Проверяем, выбран ли смайлик
                 string selectedEmoji = Request.Form["SelectedEmoji"];
                 if (!string.IsNullOrEmpty(selectedEmoji))
                 {
@@ -103,16 +123,11 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 }
                 else
                 {
-                    // Иначе берем старый аватар, но гарантированно игнорируем слово "Avatar"
+                    // Оставляем старый аватар из клаймов или дефолтный
                     var oldClaim = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value;
-                    if (!string.IsNullOrEmpty(oldClaim) && oldClaim != "Avatar" && !oldClaim.Contains("Avatar"))
-                    {
-                        avatarValue = oldClaim;
-                    }
-                    else
-                    {
-                        avatarValue = "👤";
-                    }
+                    avatarValue = (!string.IsNullOrEmpty(oldClaim) && oldClaim != "Avatar" && !oldClaim.Contains("Avatar")) 
+                        ? oldClaim 
+                        : "👤";
                 }
             }
 

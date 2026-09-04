@@ -5,58 +5,43 @@
 @inject UserManager<ApplicationUser> UserManager
 
 <ul class="navbar-nav">
-    @if (SignInManager.IsSignedIn(User))
-    {
-        var currentUser = await UserManager.GetUserAsync(User);
-        var claims = currentUser != null ? await UserManager.GetClaimsAsync(currentUser) : new List<Claim>();
+@if (SignInManager.IsSignedIn(User))
+{
+    var currentUser = await UserManager.GetUserAsync(User);
+    var claims = currentUser != null ? await UserManager.GetClaimsAsync(currentUser) : new List<Claim>();
+    
+    var avatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value ?? "👤";
+    var nicknameClaim = claims.FirstOrDefault(c => c.Type == "Nickname")?.Value ?? currentUser?.UserName ?? "Профиль";
 
-        var avatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value;
-        var nicknameClaim = claims.FirstOrDefault(c => c.Type == "Nickname")?.Value;
-
-        var displayNickname = !string.IsNullOrEmpty(nicknameClaim) ? nicknameClaim : (currentUser?.UserName ??
-            User.Identity?.Name ?? "Профиль");
-
-        <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle d-flex align-items-center text-dark" href="#" id="userMenuLink" role="button"
-               data-bs-toggle="dropdown" aria-expanded="false">
-                @if (!string.IsNullOrEmpty(avatarClaim))
-                {
-                    @if (avatarClaim.StartsWith("/"))
-                    {
-                        <img src="@avatarClaim" alt="Аватар"
-                             style="width:32px;height:32px;border-radius:50%;object-fit:cover;margin-right:8px;" />
-                    }
-                    else
-                    {
-                        <span style="font-size:24px;margin-right:8px;">@avatarClaim</span>
-                    }
-                }
-                else
-                {
-                    <span style="font-size:24px;margin-right:8px;">👤</span>
-                }
-                <span class="fw-bold">@displayNickname</span>
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 mt-2" aria-labelledby="userMenuLink">
-                <li>
-                    <a class="dropdown-item py-2" asp-area="Identity" asp-page="/Account/Manage/Index">Профиль</a>
-                </li>
-                <li>
-                    <hr class="dropdown-divider">
-                </li>
-                <li>
-                    <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout"
-                          asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
-                        <button type="submit" class="dropdown-item py-2 text-danger">Выйти</button>
-                    </form>
-                </li>
-            </ul>
-        </li>
-    }
-    else
-    {
-        <li class="nav-item">
-            <a class="nav-link text-dark fw-bold" asp-area="Identity" asp-page="/Account/Login">Войти</a>
-        </li>
-    }
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle d-flex align-items-center text-dark" href="#" id="userMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            @if (avatarClaim.StartsWith("/") || avatarClaim.StartsWith("http"))
+            {
+                <img src="@avatarClaim" alt="Аватар" style="width:32px;height:32px;border-radius:50%;object-fit:cover;margin-right:8px;" />
+            }
+            else
+            {
+                <span style="font-size:22px;margin-right:8px;">@avatarClaim</span>
+            }
+            <span class="fw-bold">@nicknameClaim</span>
+        </a>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 mt-2" aria-labelledby="userMenuLink">
+            <li>
+                <a class="dropdown-item py-2" asp-area="Identity" asp-page="/Account/Manage/Index">Профиль</a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <form class="form-inline" asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home", new { area = "" })">
+                    <button type="submit" class="dropdown-item py-2 text-danger">Выйти</button>
+                </form>
+            </li>
+        </ul>
+    </li>
+}
+else
+{
+    <li class="nav-item">
+        <a class="nav-link text-dark fw-bold" asp-area="Identity" asp-page="/Account/Login">Войти</a>
+    </li>
+}
 </ul>
