@@ -30,10 +30,10 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
 
         public class InputModel
         {
-            [BindProperty(SupportsGet = true)]
+            [BindProperty]
             public string NewUsername { get; set; }
 
-            [BindProperty(SupportsGet = true)]
+            [BindProperty]
             public string Avatar { get; set; }
 
             public IFormFile AvatarFile { get; set; }
@@ -42,9 +42,11 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
         private async Task LoadAsync(ApplicationUser user)
         {
             var claims = await _userManager.GetClaimsAsync(user);
+            var nicknameClaim = claims.FirstOrDefault(c => c.Type == "Nickname")?.Value;
+
             Input = new InputModel
             {
-                NewUsername = user.UserName,
+                NewUsername = !string.IsNullOrEmpty(nicknameClaim) ? nicknameClaim : user.UserName,
                 Avatar = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value ?? "👤"
             };
         }
@@ -63,26 +65,22 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return NotFound();
 
-            if (!ModelState.IsValid)
-            {
-                await LoadAsync(user);
-                return Page();
-            }
+            var claims = await _userManager.GetClaimsAsync(user);
 
-            // Обновляем никнейм
-            if (!string.IsNullOrEmpty(Input.NewUsername) && Input.NewUsername != user.UserName)
+            // Сохраняем кастомный никнейм в Claims, чтобы он не сбрасывался на почту
+            if (!string.IsNullOrEmpty(Input.NewUsername))
             {
-                var setUserNameResult = await _userManager.SetUserNameAsync(user, Input.NewUsername);
-                if (!setUserNameResult.Succeeded)
+                var oldNicknameClaim = claims.FirstOrDefault(c => c.Type == "Nickname");
+                if (oldNicknameClaim != null)
                 {
-                    StatusMessage = "Ошибка: этот никнейм уже занят.";
-                    return RedirectToPage();
+                    await _userManager.RemoveClaimAsync(user, oldNicknameClaim);
                 }
+                await _userManager.AddClaimAsync(user, new Claim("Nickname", Input.NewUsername));
             }
 
             string avatarValue = Input.Avatar;
 
-            // Если загружен файл картинки — сохраняем его в wwwroot/avatars
+            // Если загружен файл картинки — сохраняем его
             if (Input.AvatarFile != null && Input.AvatarFile.Length > 0)
             {
                 var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "avatars");
@@ -97,18 +95,19 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 avatarValue = "/avatars/" + uniqueFileName;
             }
 
-            // Сохраняем аватарку в Claims
-            if (!string.IsNullOrEmpty(avatarValue))
+            // Если смайлик не выбран и файл не загружен, оставляем старый аватар из базы
+            if (string.IsNullOrEmpty(avatarValue) || avatarValue == "👤")
             {
-                var claims = await _userManager.GetClaimsAsync(user);
-                var oldAvatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar");
-                if (oldAvatarClaim != null)
-                {
-                    await _userManager.RemoveClaimAsync(user, oldAvatarClaim);
-                }
-
-                await _userManager.AddClaimAsync(user, new Claim("Avatar", avatarValue));
+                avatarValue = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value ?? "👤";
             }
+
+            // Сохраняем аватарку в Claims
+            var oldAvatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar");
+            if (oldAvatarClaim != null)
+            {
+                await _userManager.RemoveClaimAsync(user, oldAvatarClaim);
+            }
+            await _userManager.AddClaimAsync(user, new Claim("Avatar", avatarValue));
 
             await _signInManager.RefreshSignInAsync(user);
             StatusMessage = "Профиль успешно обновлен.";
