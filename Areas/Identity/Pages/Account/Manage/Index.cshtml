@@ -13,32 +13,25 @@
 
     <div class="row">
         <!-- Никнейм -->
-        <!-- Никнейм -->
         <div class="col-lg-6">
-            <div class="form-floating mb-3">
-                <input asp-for="Input.NewUsername" class="form-control" placeholder="Никнейм" />
-                <label asp-for="Input.NewUsername" class="form-label">Никнейм</label>
+            <div class="mb-3">
+                <label asp-for="Input.NewUsername" class="form-label text-muted small fw-bold">Никнейм</label>
+                <input asp-for="Input.NewUsername" class="form-control rounded-3 py-2" placeholder="Введите никнейм" />
+                <span asp-validation-for="Input.NewUsername" class="text-danger small"></span>
             </div>
         </div>
 
         <!-- Аватарка -->
         <div class="col-lg-6 border-start ps-lg-4 mt-4 mt-lg-0">
-            <div class="mb-4">
-                <label class="form-label text-muted small fw-bold">Выберите готовую иконку</label>
-                <div class="d-flex flex-wrap gap-2 mt-2">
-                    <!-- Сюда вставьте ваши input type="radio" с emoji -->
-                </div>
-            </div>
-
-            <div class="mb-3 mt-4">
+            <div class="mb-3">
                 <label class="form-label text-muted small fw-bold">Или загрузите свою картинку</label>
-                <input type="file" name="Input.AvatarFile" class="form-control" accept="image/*" />
+                <input type="file" name="Input.AvatarFile" class="form-control rounded-3 py-2" accept="image/*" />
             </div>
         </div>
     </div>
 
-    <button id="update-profile-button" type="submit" class="w-100 btn btn-lg mt-4 shadow-sm"
-            style="background-color: #ff6b8b; color: white; border: none; border-radius: 12px;">
+    <button id="update-profile-button" type="submit" class="w-100 btn btn-lg mt-4 shadow-sm text-white rounded-3"
+            style="background-color: #ff6b8b; border: none;">
         Сохранить профиль
     </button>
 </form>
