@@ -91,7 +91,11 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
                 if (oldNicknameClaim != null) await _userManager.RemoveClaimAsync(user, oldNicknameClaim);
                 await _userManager.AddClaimAsync(user, new Claim("Nickname", Input.NewUsername));
 
-                if (user.UserName != Input.NewUsername) await _userManager.SetUserNameAsync(user, Input.NewUsername);
+                // ВАЖНО: UserName сознательно не меняем — вход в систему идёт по Email,
+                // который совпадает с UserName при регистрации. Если сменить UserName на
+                // никнейм, пользователь перестанет находиться по email при следующем входе
+                // (PasswordSignInAsync ищет по UserName), и логин будет падать с
+                // "Invalid login attempt", хотя пароль верный. Никнейм хранится только в claim.
             }
 
             string avatarValue = string.Empty;
