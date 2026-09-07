@@ -91,7 +91,7 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseRouting();
 app.UseRequestLocalization();
-
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
