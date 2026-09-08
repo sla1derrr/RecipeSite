@@ -63,12 +63,12 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 // Ограничиваем параметры и имя кук Identity, чтобы они не разрастались и не вызывали HTTP 431
 builder.Services.ConfigureApplicationCookie(options =>
 {
-    options.Cookie.Name = ".RecipeSite.Identity";
+    options.Cookie.Name = ".RecipeSite.Auth";
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.Path = "/"; // Фиксирует путь, чтобы куки не плодились дублями
-    options.ExpireTimeSpan = TimeSpan.FromDays(7);
+    options.Cookie.Path = "/";
+    options.ExpireTimeSpan = TimeSpan.FromHours(12); // Сокращаем время жизни, чтобы не копились
     options.SlidingExpiration = true;
 });
 
