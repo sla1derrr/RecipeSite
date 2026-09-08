@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using RecipeSite.Data;
@@ -48,7 +49,7 @@ builder.Services.AddSession(options =>
 });
 
 // === ИСПРАВЛЕННЫЙ БЛОК IDENTITY ===
-builder.Services.AddDefaultIdentity<ApplicationUser>(options => 
+builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 {
     options.SignIn.RequireConfirmedAccount = false;
     options.User.RequireUniqueEmail = true; // Запрещает регистрацию с одинаковым email
