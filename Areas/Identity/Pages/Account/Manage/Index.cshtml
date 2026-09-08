@@ -15,24 +15,16 @@
         <div class="col-12">
             <div class="d-flex align-items-center p-3 rounded-3 bg-light border">
                 <div class="me-3">
-                    @if (!string.IsNullOrEmpty(Model.CurrentAvatar) && (Model.CurrentAvatar.StartsWith("/") ||
-                                    Model.CurrentAvatar.StartsWith("http") || Model.CurrentAvatar.StartsWith("data:")))
+                    @if (!string.IsNullOrEmpty(Model.CurrentAvatarUrl))
                     {
-                        <img src="@Model.CurrentAvatar" alt="Avatar" class="rounded-circle shadow-sm"
+                        <img src="@Model.CurrentAvatarUrl" alt="Avatar" class="rounded-circle shadow-sm"
                              style="width: 65px; height: 65px; object-fit: cover;" id="avatar-preview" />
-                    }
-                    else if (!string.IsNullOrEmpty(Model.CurrentAvatar))
-                    {
-                        <div class="fs-1 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm"
-                             style="width: 65px; height: 65px;" id="avatar-preview">
-                            @Model.CurrentAvatar
-                        </div>
                     }
                     else
                     {
-                        <div class="fs-1 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm text-muted"
+                        <div class="fs-1 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm"
                              style="width: 65px; height: 65px;" id="avatar-preview">
-                            👤
+                            @(string.IsNullOrEmpty(Model.CurrentAvatarPreset) ? "👤" : Model.CurrentAvatarPreset)
                         </div>
                     }
                 </div>
@@ -56,7 +48,6 @@
         </div>
 
         <!-- Правая колонка: Выбор смайлика или файла -->
-        <!-- Правая колонка: Выбор смайлика или файла -->
         <div class="col-lg-6 border-start ps-lg-4 mt-4 mt-lg-0">
             <div class="mb-3">
                 <label class="form-label text-muted small fw-bold">Выберите стандартный смайлик</label>
@@ -68,7 +59,6 @@
                     {
                         i++;
                         <div class="form-check p-0">
-                            <!-- Заменено asp-for на name="SelectedEmoji" -->
                             <input type="radio" class="btn-check" name="SelectedEmoji" id="emoji-@i" value="@emoji"
                                    autocomplete="off">
                             <label
@@ -83,7 +73,6 @@
 
             <div class="mb-3 mt-4">
                 <label class="form-label text-muted small fw-bold">Или загрузите свою картинку</label>
-                <!-- Заменено на asp-for="UploadedAvatar" -->
                 <input type="file" asp-for="UploadedAvatar" id="avatarFileinput" class="form-control rounded-3 py-2"
                        accept="image/*" />
             </div>
@@ -102,7 +91,6 @@
         const fileInput = document.getElementById('avatarFileinput');
         const emojiRadios = document.querySelectorAll('input[name="SelectedEmoji"]');
 
-        // Если выбрали файл -> снимаем выделение со всех смайликов
         fileInput.addEventListener('change', function (event) {
             emojiRadios.forEach(radio => radio.checked = false);
 
@@ -128,12 +116,10 @@
             }
         });
 
-        // Если кликнули на смайлик -> очищаем выбранный файл
         emojiRadios.forEach(radio => {
             radio.addEventListener('change', function () {
                 fileInput.value = '';
 
-                // Визуально меняем превью на смайлик
                 const preview = document.getElementById('avatar-preview');
                 const newDiv = document.createElement('div');
                 newDiv.className = 'fs-1 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm';

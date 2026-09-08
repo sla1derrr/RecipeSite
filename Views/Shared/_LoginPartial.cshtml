@@ -1,6 +1,5 @@
 ﻿@using Microsoft.AspNetCore.Identity
 @using RecipeSite.Models
-@using System.Security.Claims
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
 
@@ -8,22 +7,22 @@
 @if (SignInManager.IsSignedIn(User))
 {
     var currentUser = await UserManager.GetUserAsync(User);
-    var claims = currentUser != null ? await UserManager.GetClaimsAsync(currentUser) : new List<Claim>();
-    
-    var avatarClaim = claims.FirstOrDefault(c => c.Type == "Avatar")?.Value ?? "👤";
-    var nicknameClaim = claims.FirstOrDefault(c => c.Type == "Nickname")?.Value ?? currentUser?.UserName ?? "Профиль";
+
+    var avatarUrl = currentUser?.AvatarUrl;
+    var avatarPreset = currentUser?.AvatarPreset;
+    var nickname = !string.IsNullOrEmpty(currentUser?.FirstName) ? currentUser.FirstName : (currentUser?.UserName ?? "Профиль");
 
     <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle d-flex align-items-center text-dark" href="#" id="userMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            @if (avatarClaim.StartsWith("/") || avatarClaim.StartsWith("http") || avatarClaim.StartsWith("data:"))
+            @if (!string.IsNullOrEmpty(avatarUrl))
             {
-                <img src="@avatarClaim" alt="Аватар" style="width:32px;height:32px;border-radius:50%;object-fit:cover;margin-right:8px;" />
+                <img src="@avatarUrl" alt="Аватар" style="width:32px;height:32px;border-radius:50%;object-fit:cover;margin-right:8px;" />
             }
             else
             {
-                <span style="font-size:22px;margin-right:8px;">@avatarClaim</span>
+                <span style="font-size:22px;margin-right:8px;">@(string.IsNullOrEmpty(avatarPreset) ? "👤" : avatarPreset)</span>
             }
-            <span class="fw-bold">@nicknameClaim</span>
+            <span class="fw-bold">@nickname</span>
         </a>
         <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 mt-2" aria-labelledby="userMenuLink">
             <li>
