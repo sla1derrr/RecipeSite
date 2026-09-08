@@ -16,7 +16,7 @@
             <div class="d-flex align-items-center p-3 rounded-3 bg-light border">
                 <div class="me-3">
                     @if (!string.IsNullOrEmpty(Model.CurrentAvatar) && (Model.CurrentAvatar.StartsWith("/") ||
-                                    Model.CurrentAvatar.StartsWith("http")))
+                                    Model.CurrentAvatar.StartsWith("http") || Model.CurrentAvatar.StartsWith("data:")))
                     {
                         <img src="@Model.CurrentAvatar" alt="Avatar" class="rounded-circle shadow-sm"
                              style="width: 65px; height: 65px; object-fit: cover;" id="avatar-preview" />

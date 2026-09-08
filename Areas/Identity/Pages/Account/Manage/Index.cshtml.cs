@@ -100,22 +100,26 @@ namespace RecipeSite.Areas.Identity.Pages.Account.Manage
 
             string avatarValue = string.Empty;
 
-            // 2. Бронированный способ обработки файла
+            // 2. Сохраняем файл прямо в claim как base64 data-URI (не на диск!),
+            // т.к. файловая система контейнера на Railway эфемерна и стирается
+            // при каждом рестарте/передеплое — а БД (и claim в ней) сохраняется.
             if (UploadedAvatar != null && UploadedAvatar.Length > 0)
             {
-                // Защита на случай, если WebRootPath == null (часто бывает на Railway)
-                var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-                var uploadsFolder = Path.Combine(webRoot, "avatars");
-                Directory.CreateDirectory(uploadsFolder);
-
-                var uniqueFileName = Guid.NewGuid().ToString() + "_" + Path.GetFileName(UploadedAvatar.FileName);
-                var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
+                const long maxSizeBytes = 2 * 1024 * 1024; // 2 МБ, чтобы не раздувать таблицу claim'ов
+                if (UploadedAvatar.Length > maxSizeBytes)
                 {
-                    await UploadedAvatar.CopyToAsync(fileStream);
+                    ModelState.AddModelError(string.Empty, "Файл слишком большой (максимум 2 МБ).");
+                    await LoadAsync(user);
+                    return Page();
                 }
-                avatarValue = "/avatars/" + uniqueFileName;
+
+                using var memoryStream = new MemoryStream();
+                await UploadedAvatar.CopyToAsync(memoryStream);
+                var base64 = Convert.ToBase64String(memoryStream.ToArray());
+                var contentType = string.IsNullOrEmpty(UploadedAvatar.ContentType)
+                    ? "image/png"
+                    : UploadedAvatar.ContentType;
+                avatarValue = $"data:{contentType};base64,{base64}";
             }
             // 3. Если файла нет, смотрим смайлик
             else if (!string.IsNullOrEmpty(SelectedEmoji))

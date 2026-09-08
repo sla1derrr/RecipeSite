@@ -15,7 +15,7 @@
 
     <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle d-flex align-items-center text-dark" href="#" id="userMenuLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            @if (avatarClaim.StartsWith("/") || avatarClaim.StartsWith("http"))
+            @if (avatarClaim.StartsWith("/") || avatarClaim.StartsWith("http") || avatarClaim.StartsWith("data:"))
             {
                 <img src="@avatarClaim" alt="Аватар" style="width:32px;height:32px;border-radius:50%;object-fit:cover;margin-right:8px;" />
             }
