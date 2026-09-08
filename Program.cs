@@ -60,10 +60,15 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>();
 
 // Ограничиваем параметры и имя кук Identity, чтобы они не разрастались и не вызывали HTTP 431
+// Ограничиваем параметры и имя кук Identity, чтобы они не разрастались и не вызывали HTTP 431
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.Name = ".RecipeSite.Identity";
-    options.ExpireTimeSpan = TimeSpan.FromDays(1);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.Path = "/"; // Фиксирует путь, чтобы куки не плодились дублями
+    options.ExpireTimeSpan = TimeSpan.FromDays(7);
     options.SlidingExpiration = true;
 });
 
