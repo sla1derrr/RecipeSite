@@ -3,15 +3,23 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using RecipeSite.Data;
 using RecipeSite.Models;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Увеличиваем общий размер заголовков на уровне Kestrel (защита от HTTP 431)
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxRequestHeadersTotalSize = 64 * 1024; // 64 KB
+});
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
-var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 var rawConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
-                          ?? Environment.GetEnvironmentVariable("DATABASE_PRIVATE_URL")
-                          ?? builder.Configuration["DATABASE_URL"]
-                          ?? builder.Configuration.GetConnectionString("DefaultConnection");
+                        ?? Environment.GetEnvironmentVariable("DATABASE_PRIVATE_URL")
+                        ?? builder.Configuration["DATABASE_URL"]
+                        ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
 string connectionString = rawConnectionString ?? "";
 
@@ -31,16 +39,12 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-// Персистентные ключи шифрования cookie в БД, а не на эфемерном диске контейнера.
-// Без этого при каждом рестарте/редеплое на Railway генерируются новые ключи,
-// старые cookie не расшифровываются, и они начинают копиться/раздувать заголовки -> HTTP 431.
+// Персистентные ключи шифрования cookie в БД (защита от раздувания кук при деплоях)
 builder.Services.AddDataProtection()
     .PersistKeysToDbContext<ApplicationDbContext>()
     .SetApplicationName("RecipeSite");
 
-// TempData по умолчанию хранится в cookie (CookieTempDataProvider).
-// Переносим в сессию, чтобы статусные сообщения (после логина, смены пароля и т.п.)
-// не добавляли вес в заголовки запроса.
+// Перенос TempData в сессию, чтобы не перегружать заголовки запроса
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -48,14 +52,20 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
-// === ИСПРАВЛЕННЫЙ БЛОК IDENTITY ===
 builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 {
     options.SignIn.RequireConfirmedAccount = false;
-    options.User.RequireUniqueEmail = true; // Запрещает регистрацию с одинаковым email
+    options.User.RequireUniqueEmail = true;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>();
-// ==================================
+
+// Ограничиваем параметры и имя кук Identity, чтобы они не разрастались и не вызывали HTTP 431
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.Name = ".RecipeSite.Identity";
+    options.ExpireTimeSpan = TimeSpan.FromDays(1);
+    options.SlidingExpiration = true;
+});
 
 builder.Services.AddControllersWithViews()
     .AddSessionStateTempDataProvider();
@@ -82,13 +92,12 @@ builder.Services.Configure<RequestLocalizationOptions>(options =>
 
 var app = builder.Build();
 
-// === ОБЯЗАТЕЛЬНО ДОБАВЬ СДЕСЬ ДЛЯ RAILWAY ===
+// Настройка для корректной работы за прокси Railway
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | 
                        Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
 });
-// ============================================
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -101,19 +110,16 @@ else
     app.UseHsts();
 }
 
-//app.UseHttpsRedirection();
-
-// === ДОБАВЛЕННЫЙ БЛОК ДЛЯ АВАТАРОК ===
+// Блок для аватарок
 var webRoot = app.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
 var avatarsFolder = Path.Combine(webRoot, "avatars");
-Directory.CreateDirectory(avatarsFolder); // Гарантируем, что папка существует
+Directory.CreateDirectory(avatarsFolder);
 
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(avatarsFolder),
     RequestPath = "/avatars"
 });
-// =====================================
 
 app.UseRouting();
 app.UseRequestLocalization();
@@ -136,4 +142,5 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();
 }
+
 app.Run();
