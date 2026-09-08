@@ -30,6 +30,23 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
+// Персистентные ключи шифрования cookie в БД, а не на эфемерном диске контейнера.
+// Без этого при каждом рестарте/редеплое на Railway генерируются новые ключи,
+// старые cookie не расшифровываются, и они начинают копиться/раздувать заголовки -> HTTP 431.
+builder.Services.AddDataProtection()
+    .PersistKeysToDbContext<ApplicationDbContext>()
+    .SetApplicationName("RecipeSite");
+
+// TempData по умолчанию хранится в cookie (CookieTempDataProvider).
+// Переносим в сессию, чтобы статусные сообщения (после логина, смены пароля и т.п.)
+// не добавляли вес в заголовки запроса.
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
 // === ИСПРАВЛЕННЫЙ БЛОК IDENTITY ===
 builder.Services.AddDefaultIdentity<ApplicationUser>(options => 
 {
@@ -39,7 +56,8 @@ builder.Services.AddDefaultIdentity<ApplicationUser>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>();
 // ==================================
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews()
+    .AddSessionStateTempDataProvider();
 builder.Services.AddHttpClient<RecipeSite.Services.MealDbService>();
 builder.Services.AddHttpClient<RecipeSite.Services.SpoonacularService>();
 builder.Services.AddHttpClient<RecipeSite.Services.EdamamService>();
@@ -91,6 +109,7 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.UseRouting();
 app.UseRequestLocalization();
+app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -107,6 +126,6 @@ app.MapRazorPages()
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate();
 }
 app.Run();
