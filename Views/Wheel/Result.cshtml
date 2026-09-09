@@ -49,8 +49,16 @@
                         var gradientCss = string.Join(", ", gradientStops);
                     }
 
-                    <!-- Большое колесо без текста (440px) -->
+                    <!-- Колесо с подписями блюд прямо на секторах (440px) -->
                     <div id="wheel" class="wheel shadow-lg mx-auto" style="background: conic-gradient(@gradientCss); width: 440px; height: 440px; border-radius: 50%; position: relative; overflow: hidden; border: 8px solid #fff;">
+                        @for (int i = 0; i < count; i++)
+                        {
+                            var sliceCenter = i * sliceAngle + sliceAngle / 2;
+                            var labelRotation = sliceCenter - 90;
+                            <div class="wheel-label-line" style="transform: rotate(@(labelRotation.ToString(System.Globalization.CultureInfo.InvariantCulture))deg);">
+                                <span class="wheel-label-text">@items[i].Title</span>
+                            </div>
+                        }
                     </div>
                 </div>
 
@@ -96,22 +104,34 @@
 
 <script>
     const items = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(items));
-    const winnerIndex = @winnerIndex;
     const sliceAngle = @(sliceAngle.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    let winnerIndex = @winnerIndex;
 
     const wheel = document.getElementById('wheel');
     const spinButton = document.getElementById('spinButton');
+
+    // Храним накопленный угол поворота, чтобы каждый следующий спин крутил
+    // колесо ДАЛЬШЕ, а не ставил тот же самый угол (иначе анимация не запустится повторно)
+    let currentRotation = 0;
 
     spinButton.addEventListener('click', function () {
         spinButton.disabled = true;
         document.getElementById('winnerCard').classList.add('d-none');
 
+        // Выбираем новый случайный результат при каждом клике
+        winnerIndex = Math.floor(Math.random() * items.length);
+
         const targetSliceCenter = winnerIndex * sliceAngle + sliceAngle / 2;
+        const desiredMod = (360 - targetSliceCenter + 360) % 360;
+        const currentMod = ((currentRotation % 360) + 360) % 360;
+        // Разница, которую нужно докрутить сверх текущего положения, чтобы попасть на нужный сектор
+        const diff = (desiredMod - currentMod + 360) % 360;
+
         const fullSpins = 6 * 360;
-        const finalRotation = fullSpins + (360 - targetSliceCenter);
+        currentRotation += fullSpins + diff;
 
         wheel.style.transition = 'transform 4.5s cubic-bezier(0.15, 0.7, 0.1, 1)';
-        wheel.style.transform = 'rotate(' + finalRotation + 'deg)';
+        wheel.style.transform = 'rotate(' + currentRotation + 'deg)';
 
         setTimeout(function () {
             const winner = items[winnerIndex];
@@ -164,6 +184,32 @@
         color: #ff6b8b;
         z-index: 10;
         text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    /* Линия-ось для подписи сектора: идёт от центра колеса к краю под нужным углом */
+    .wheel-label-line {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 46%;
+        height: 0;
+        transform-origin: 0% 50%;
+        pointer-events: none;
+    }
+    /* Сама подпись: сидит примерно в середине цветного сектора, обрезается многоточием если не влезает */
+    .wheel-label-text {
+        position: absolute;
+        right: 0;
+        top: 0;
+        transform: translateY(-50%);
+        display: inline-block;
+        max-width: 92px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 11px;
+        font-weight: 700;
+        color: #fff;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.55);
     }
     /* Эффект при наведении на кнопку */
     #spinButton:hover {

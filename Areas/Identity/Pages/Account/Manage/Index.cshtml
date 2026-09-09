@@ -1,134 +1,224 @@
-﻿@page
-@model IndexModel
-@{
-    ViewData["Title"] = "Профиль";
-    ViewData["ActivePage"] = ManageNavPages.Index;
+﻿@{
+    ViewData["Title"] = "Главная";
 }
 
-<h4 class="fw-bold mb-4">Профиль</h4>
-<partial name="_StatusMessage" for="StatusMessage" />
+<div class="container mt-4">
 
-<form id="profile-form" method="post" enctype="multipart/form-data">
-    <div asp-validation-summary="All" class="text-danger mb-3" role="alert"></div>
-
-    <div class="row align-items-center mb-4">
-        <div class="col-12">
-            <div class="d-flex align-items-center p-3 rounded-3 bg-light border">
-                <div class="me-3">
-                    @if (!string.IsNullOrEmpty(Model.CurrentAvatarUrl))
-                    {
-                        <img src="@Model.CurrentAvatarUrl" alt="Avatar" class="rounded-circle shadow-sm"
-                             style="width: 65px; height: 65px; object-fit: cover;" id="avatar-preview" />
-                    }
-                    else
-                    {
-                        <div class="fs-1 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm"
-                             style="width: 65px; height: 65px;" id="avatar-preview">
-                            @(string.IsNullOrEmpty(Model.CurrentAvatarPreset) ? "👤" : Model.CurrentAvatarPreset)
-                        </div>
-                    }
-                </div>
-                <div>
-                    <span class="text-muted small d-block">Текущий аккаунт</span>
-                    <h4 class="fw-bold mb-0 text-dark">@Model.Input.NewUsername</h4>
-                </div>
-            </div>
+    <!-- Главный приветственный баннер с фото на фоне -->
+    <div class="home-hero mb-5 rounded-4 shadow-sm text-center">
+        <div class="home-hero-overlay rounded-4">
+            <h1 class="display-5 fw-bold mb-3 text-white">Добро пожаловать в Foodify 🍳</h1>
+            <p class="lead mx-auto mb-0 text-white-50" style="max-width: 800px;">
+                Ваш личный кулинарный помощник. Мы создали платформу, чтобы избавить вас от хаоса в заметках и закладках.
+                Храните, организуйте и готовьте с удовольствием.
+            </p>
+            <p class="text-white-50 small mt-3 mb-0">
+                🖱️ Карточки ниже можно перетаскивать и менять местами — сохраните удобный для себя порядок
+            </p>
         </div>
     </div>
 
     <div class="row">
-        <!-- Левая колонка: Никнейм -->
-        <div class="col-lg-6">
-            <div class="mb-3">
-                <label asp-for="Input.NewUsername" class="form-label text-muted small fw-bold">Никнейм</label>
-                <input asp-for="Input.NewUsername" class="form-control rounded-3 py-2"
-                       placeholder="Введите ваш никнейм" />
-                <span asp-validation-for="Input.NewUsername" class="text-danger small"></span>
+        <!-- Левая колонка: факты -->
+        <div class="col-lg-3 mb-4">
+            <div class="card shadow-sm border-0 rounded-3 sticky-top fact-carousel" style="top: 20px;">
+                <div class="card-body">
+                    <h6 class="card-title fw-bold text-warning mb-3" id="factLabel">💡 А знаете ли вы?</h6>
+                    <p class="card-text text-muted small mb-0" id="factText">
+                        На каждую «обычную» веб-страничку приходится пять страниц с порнографическим содержанием.
+                    </p>
+                    <div class="d-flex justify-content-center gap-1 mt-3" id="factDots"></div>
+                </div>
             </div>
         </div>
 
-        <!-- Правая колонка: Выбор смайлика или файла -->
-        <div class="col-lg-6 border-start ps-lg-4 mt-4 mt-lg-0">
-            <div class="mb-3">
-                <label class="form-label text-muted small fw-bold">Выберите стандартный смайлик</label>
-                <div class="d-flex flex-wrap gap-2 mt-1">
-                    @{
-                        int i = 0;
-                    }
-                    @foreach (var emoji in new[] { "🍳", "🍕", "🍰", "🍜", "🍇", "🥑", "😎", "🐱", "🚀" })
-                    {
-                        i++;
-                        <div class="form-check p-0">
-                            <input type="radio" class="btn-check" name="SelectedEmoji" id="emoji-@i" value="@emoji"
-                                   autocomplete="off">
-                            <label
-                                class="btn btn-outline-danger rounded-circle p-0 fs-5 d-flex align-items-center justify-content-center shadow-sm"
-                                style="width: 45px; height: 45px; cursor: pointer;" for="emoji-@i">
-                                @emoji
-                            </label>
-                        </div>
-                    }
-                </div>
-            </div>
+        <!-- Правая колонка: интерактивные перетаскиваемые карточки -->
+        <div class="col-lg-9">
+            <div class="row g-4 px-3" id="featureGrid">
 
-            <div class="mb-3 mt-4">
-                <label class="form-label text-muted small fw-bold">Или загрузите свою картинку</label>
-                <input type="file" asp-for="UploadedAvatar" id="avatarFileinput" class="form-control rounded-3 py-2"
-                       accept="image/*" />
+                <div class="col-md-6 feature-col" draggable="true"
+                     data-href="@Url.Action("Index", "RecipeBook")">
+                    <div class="p-4 shadow-sm border-0 rounded-3 h-100 feature-card feature-card--pink">
+                        <span class="drag-handle" title="Перетащить">⠿</span>
+                        <div class="fs-1 mb-3">🍱</div>
+                        <h5 class="fw-bold">Удобные разделы блюд</h5>
+                        <p class="text-muted small mb-0">Супы, вторые блюда, десерты и многое другое — всё разложено по полочкам для быстрого поиска.</p>
+                        <span class="feature-cta">Открыть книгу рецептов →</span>
+                    </div>
+                </div>
+
+                <div class="col-md-6 feature-col" draggable="true"
+                     data-href="@Url.Action("MyRecipes", "Recipes")">
+                    <div class="p-4 shadow-sm border-0 rounded-3 h-100 feature-card feature-card--orange">
+                        <span class="drag-handle" title="Перетащить">⠿</span>
+                        <div class="fs-1 mb-3">📱</div>
+                        <h5 class="fw-bold">Сохраняй из соцсетей</h5>
+                        <p class="text-muted small mb-0">Увидели крутой рецепт в TikTok или Instagram? Просто вставьте ссылку, и мы сохраним его к вам в книгу.</p>
+                        <span class="feature-cta">Мои рецепты →</span>
+                    </div>
+                </div>
+
+                <div class="col-md-6 feature-col" draggable="true"
+                     data-href="@Url.Action("Index", "Wheel")">
+                    <div class="p-4 shadow-sm border-0 rounded-3 h-100 feature-card feature-card--purple">
+                        <span class="drag-handle" title="Перетащить">⠿</span>
+                        <div class="fs-1 mb-3">🎡</div>
+                        <h5 class="fw-bold">Что приготовить?</h5>
+                        <p class="text-muted small mb-0">Не знаешь, что готовить сегодня? Крути колесо — оно выберет блюдо из твоих рецептов или каталога.</p>
+                        <span class="feature-cta">Крутить колесо →</span>
+                    </div>
+                </div>
+
+                <div class="col-md-6 feature-col" draggable="true" data-soon="true">
+                    <div class="p-4 shadow-sm border-0 rounded-3 h-100 feature-card feature-card--yellow feature-card--soon">
+                        <span class="drag-handle" title="Перетащить">⠿</span>
+                        <span class="soon-badge">Скоро</span>
+                        <div class="fs-1 mb-3">✨</div>
+                        <h5 class="fw-bold">Умные картинки</h5>
+                        <p class="text-muted small mb-0">Нет подходящего фото для рецепта? Придумайте название блюду, а картинка сгенерируется автоматически.</p>
+                    </div>
+                </div>
+
+                <div class="col-md-6 feature-col" draggable="true" data-soon="true">
+                    <div class="p-4 shadow-sm border-0 rounded-3 h-100 feature-card feature-card--green feature-card--soon">
+                        <span class="drag-handle" title="Перетащить">⠿</span>
+                        <span class="soon-badge">Скоро</span>
+                        <div class="fs-1 mb-3">🛒</div>
+                        <h5 class="fw-bold">Авто-список покупок</h5>
+                        <p class="text-muted small mb-0">Добавьте блюда в план на неделю, и Foodify сам соберет все нужные ингредиенты в удобный список для магазина.</p>
+                    </div>
+                </div>
+
+                <div class="col-md-6 feature-col" draggable="true" data-soon="true">
+                    <div class="p-4 shadow-sm border-0 rounded-3 h-100 feature-card feature-card--blue feature-card--soon">
+                        <span class="drag-handle" title="Перетащить">⠿</span>
+                        <span class="soon-badge">Скоро</span>
+                        <div class="fs-1 mb-3">🥑</div>
+                        <h5 class="fw-bold">Холодильник</h5>
+                        <p class="text-muted small mb-0">Впишите продукты, которые у вас сейчас есть, и мы подскажем, какое блюдо из них можно приготовить прямо сейчас.</p>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
-
-    <button type="submit" class="w-100 btn btn-lg mt-4 shadow-sm text-white rounded-3"
-            style="background-color: #ff6b8b; border: none; cursor: pointer; position: relative; z-index: 10;">
-        Сохранить профиль
-    </button>
-</form>
+</div>
 
 @section Scripts {
-    <partial name="_ValidationScriptsPartial" />
     <script>
-        const fileInput = document.getElementById('avatarFileinput');
-        const emojiRadios = document.querySelectorAll('input[name="SelectedEmoji"]');
-
-        fileInput.addEventListener('change', function (event) {
-            emojiRadios.forEach(radio => radio.checked = false);
-
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    const preview = document.getElementById('avatar-preview');
-                    if (preview && preview.tagName === 'IMG') {
-                        preview.src = e.target.result;
-                    } else if (preview) {
-                        const newImg = document.createElement('img');
-                        newImg.src = e.target.result;
-                        newImg.className = 'rounded-circle shadow-sm';
-                        newImg.style.width = '65px';
-                        newImg.style.height = '65px';
-                        newImg.style.objectFit = 'cover';
-                        newImg.id = 'avatar-preview';
-                        preview.parentNode.replaceChild(newImg, preview);
-                    }
-                }
-                reader.readAsDataURL(file);
-            }
-        });
-
-        emojiRadios.forEach(radio => {
-            radio.addEventListener('change', function () {
-                fileInput.value = '';
-
-                const preview = document.getElementById('avatar-preview');
-                const newDiv = document.createElement('div');
-                newDiv.className = 'fs-1 d-flex align-items-center justify-content-center bg-white rounded-circle shadow-sm';
-                newDiv.style.width = '65px';
-                newDiv.style.height = '65px';
-                newDiv.id = 'avatar-preview';
-                newDiv.innerText = this.value;
-                preview.parentNode.replaceChild(newDiv, preview);
+        (function () {
+            // ---------- Тилт-эффект при наведении ----------
+            document.querySelectorAll('.feature-card').forEach(function (card) {
+                card.addEventListener('mousemove', function (e) {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const rotateX = ((y / rect.height) - 0.5) * -8;
+                    const rotateY = ((x / rect.width) - 0.5) * 8;
+                    card.style.transform = `perspective(700px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateY(-6px)`;
+                });
+                card.addEventListener('mouseleave', function () {
+                    card.style.transform = '';
+                });
             });
-        });
+
+            // ---------- Клик по карточке -> переход ----------
+            document.querySelectorAll('.feature-col').forEach(function (col) {
+                col.addEventListener('click', function (e) {
+                    if (col.classList.contains('dragging-just-happened')) return;
+                    if (col.dataset.soon) return;
+                    const href = col.dataset.href;
+                    if (href) window.location.href = href;
+                });
+            });
+
+            // ---------- Drag & Drop переупорядочивание ----------
+            const grid = document.getElementById('featureGrid');
+            const STORAGE_KEY = 'foodify-home-card-order-v1';
+            let dragEl = null;
+
+            function getCardId(col) {
+                const title = col.querySelector('h5');
+                return title ? title.textContent.trim() : '';
+            }
+
+            function saveOrder() {
+                const order = Array.from(grid.children).map(getCardId);
+                try { localStorage.setItem(STORAGE_KEY, JSON.stringify(order)); } catch (e) {}
+            }
+
+            function restoreOrder() {
+                let order;
+                try { order = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) { return; }
+                if (!order || !Array.isArray(order)) return;
+
+                const cols = Array.from(grid.children);
+                order.forEach(function (id) {
+                    const match = cols.find(function (c) { return getCardId(c) === id; });
+                    if (match) grid.appendChild(match);
+                });
+            }
+
+            grid.querySelectorAll('.feature-col').forEach(function (col) {
+                col.addEventListener('dragstart', function () {
+                    dragEl = col;
+                    setTimeout(function () { col.classList.add('is-dragging'); }, 0);
+                });
+
+                col.addEventListener('dragend', function () {
+                    col.classList.remove('is-dragging');
+                    col.classList.add('dragging-just-happened');
+                    setTimeout(function () { col.classList.remove('dragging-just-happened'); }, 50);
+                    saveOrder();
+                });
+
+                col.addEventListener('dragover', function (e) {
+                    e.preventDefault();
+                    if (!dragEl || dragEl === col) return;
+                    const rect = col.getBoundingClientRect();
+                    const after = (e.clientY - rect.top) > rect.height / 2;
+                    if (after) {
+                        col.parentNode.insertBefore(dragEl, col.nextSibling);
+                    } else {
+                        col.parentNode.insertBefore(dragEl, col);
+                    }
+                });
+            });
+
+            restoreOrder();
+
+            // ---------- Мини-карусель фактов ----------
+            const facts = [
+                { label: '💡 А знаете ли вы?', text: 'На каждую «обычную» веб-страничку приходится пять страниц с порнографическим содержанием.' },
+                { label: '💡 А знаете ли вы?', text: 'The letters KGB stand for Komitet Gosudarstvennoy Bezopasnosti.' },
+                { label: '📌 Ещё интересное', text: 'В Вермонте соотношение коров и людей составляет 10:1.' },
+                { label: '📌 Ещё интересное', text: 'В XVI веке на Филиппинах йо-йо использовалось в качестве оружия.' }
+            ];
+
+            const factLabel = document.getElementById('factLabel');
+            const factText = document.getElementById('factText');
+            const factDots = document.getElementById('factDots');
+            let factIndex = 0;
+
+            facts.forEach(function (_, i) {
+                const dot = document.createElement('span');
+                dot.className = 'fact-dot' + (i === 0 ? ' active' : '');
+                dot.addEventListener('click', function () { showFact(i); });
+                factDots.appendChild(dot);
+            });
+
+            function showFact(i) {
+                factIndex = i;
+                factLabel.textContent = facts[i].label;
+                factText.textContent = facts[i].text;
+                Array.from(factDots.children).forEach(function (d, idx) {
+                    d.classList.toggle('active', idx === i);
+                });
+            }
+
+            setInterval(function () {
+                showFact((factIndex + 1) % facts.length);
+            }, 6000);
+        })();
     </script>
 }

@@ -424,6 +424,108 @@ body {
     border-radius: 12px;
 }
 
+/* ===== Главная страница: герой-баннер с фото ===== */
+.home-hero {
+    position: relative;
+    padding: 60px 20px;
+    overflow: hidden;
+    background:
+        url('https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=1600&q=80') center/cover no-repeat;
+}
+
+.home-hero-overlay {
+    position: relative;
+    z-index: 1;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(255, 94, 143, 0.82) 0%, rgba(255, 153, 102, 0.82) 100%);
+}
+
+/* ===== Интерактивные карточки функций ===== */
+.feature-col {
+    cursor: grab;
+    user-select: none;
+}
+
+.feature-col.is-dragging {
+    opacity: 0.4;
+}
+
+.feature-card {
+    position: relative;
+    background: white;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    will-change: transform;
+    cursor: pointer;
+}
+
+.feature-card:hover {
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15) !important;
+}
+
+.feature-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 5px;
+    border-radius: 14px 14px 0 0;
+}
+
+.feature-card--pink::before   { background: linear-gradient(90deg, #ff6b8b, #ff9ab0); }
+.feature-card--orange::before { background: linear-gradient(90deg, #ff9966, #ffc38a); }
+.feature-card--purple::before { background: linear-gradient(90deg, #b06bff, #d6aeff); }
+.feature-card--yellow::before { background: linear-gradient(90deg, #ffcc4d, #ffe08a); }
+.feature-card--green::before  { background: linear-gradient(90deg, #6bcf8f, #a6e6bd); }
+.feature-card--blue::before   { background: linear-gradient(90deg, #6ba8ff, #a6c8ff); }
+
+.drag-handle {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    color: #ccc;
+    font-size: 18px;
+    letter-spacing: -2px;
+}
+
+.feature-cta {
+    display: inline-block;
+    margin-top: 14px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #ff6b8b;
+}
+
+.feature-card--soon {
+    cursor: default;
+    opacity: 0.85;
+}
+
+.soon-badge {
+    position: absolute;
+    top: 10px;
+    left: 12px;
+    background: #f1f1f1;
+    color: #888;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+}
+
+/* ===== Карусель фактов ===== */
+.fact-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #e6e6e6;
+    display: inline-block;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.fact-dot.active {
+    background: #ff6b8b;
+}
+
 /* Красивые кнопки для выбора эмодзи-аватарок */
 .btn-outline-danger {
     color: #ff6b8b;
