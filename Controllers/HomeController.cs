@@ -8,18 +8,18 @@ namespace RecipeSite.Controllers;
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;
-    private readonly FactsService _factsService;
+    private readonly MealDbService _mealDbService;
 
-    public HomeController(ILogger<HomeController> logger, FactsService factsService)
+    public HomeController(ILogger<HomeController> logger, MealDbService mealDbService)
     {
         _logger = logger;
-        _factsService = factsService;
+        _mealDbService = mealDbService;
     }
 
     public async Task<IActionResult> Index()
     {
-        var facts = await _factsService.GetRandomFactsAsync(4);
-        ViewBag.Facts = facts;
+        var categories = await _mealDbService.GetCategoriesAsync();
+        ViewBag.QuickCategories = categories.Take(6).ToList();
         return View();
     }
 

@@ -427,17 +427,26 @@ body {
 /* ===== Главная страница: герой-баннер с фото (на всю ширину экрана) ===== */
 .home-hero {
     position: relative;
-    padding: 70px 20px;
+    min-height: 420px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     overflow: hidden;
     background:
         url('https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat;
 }
 
 .home-hero-overlay {
-    position: relative;
+    position: absolute;
+    inset: 0;
     z-index: 1;
-    padding: 20px;
-    background: linear-gradient(135deg, rgba(255, 94, 143, 0.82) 0%, rgba(255, 153, 102, 0.82) 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 20px;
+    background: linear-gradient(135deg, rgba(255, 94, 143, 0.85) 0%, rgba(255, 153, 102, 0.85) 100%);
 }
 
 /* ===== Карусель возможностей сайта ===== */
@@ -594,19 +603,47 @@ body {
     border-radius: 5px;
 }
 
-/* ===== Карусель фактов ===== */
-.fact-dot {
-    width: 8px;
-    height: 8px;
+/* ===== Блок "Как это работает" ===== */
+.how-step-badge {
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
-    background: #e6e6e6;
-    display: inline-block;
-    cursor: pointer;
-    transition: background 0.2s ease;
+    background: linear-gradient(135deg, #ff6b8b, #ff9966);
+    color: white;
+    font-weight: 800;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 16px rgba(255, 107, 139, 0.35);
 }
 
-.fact-dot.active {
+/* ===== CTA-баннер внизу главной ===== */
+.home-cta {
+    background: linear-gradient(135deg, #ff6b8b 0%, #ff9966 100%);
+}
+
+.home-cta .btn-outline-light:hover {
+    color: #ff6b8b;
+}
+
+/* ===== Быстрые категории (замена блока фактов) ===== */
+.quick-category-link {
+    display: block;
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #f8f9fa;
+    color: #333;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.quick-category-link:hover {
     background: #ff6b8b;
+    color: white;
+    transform: translateX(3px);
 }
 
 /* Красивые кнопки для выбора эмодзи-аватарок */

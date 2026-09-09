@@ -18,15 +18,25 @@
     <div class="container">
         <div class="row">
 
-            <!-- Левая колонка: факты -->
+            <!-- Левая колонка: быстрые категории -->
             <div class="col-lg-3 mb-4">
                 <div class="card shadow-sm border-0 rounded-3 sticky-top" style="top: 20px;">
                     <div class="card-body">
-                        <h6 class="card-title fw-bold text-warning mb-3" id="factLabel">💡 А знаете ли вы?</h6>
-                        <p class="card-text text-muted small mb-0" id="factText">
-                            На каждую «обычную» веб-страничку приходится пять страниц с порнографическим содержанием.
-                        </p>
-                        <div class="d-flex justify-content-center gap-1 mt-3" id="factDots"></div>
+                        <h6 class="card-title fw-bold mb-3">🍽️ Быстрые категории</h6>
+                        <div class="d-grid gap-2">
+                            @{
+                                var quickCategories = ViewBag.QuickCategories as List<string> ?? new List<string>();
+                            }
+                            @foreach (var cat in quickCategories)
+                            {
+                                <a href="@Url.Action("Index", "RecipeBook", new { category = cat })" class="quick-category-link">
+                                    @cat
+                                </a>
+                            }
+                        </div>
+                        <a href="@Url.Action("Index", "RecipeBook")" class="d-block text-center small fw-bold mt-3" style="color:#ff6b8b;">
+                            Смотреть все категории →
+                        </a>
                     </div>
                 </div>
             </div>
@@ -109,6 +119,39 @@
 
             </div>
         </div>
+
+        <!-- ===== Блок "Как это работает" ===== -->
+        <div class="how-it-works my-5 py-4">
+            <h5 class="fw-bold text-center mb-4">Как это работает</h5>
+            <div class="row g-4">
+                <div class="col-md-4 text-center">
+                    <div class="how-step-badge mx-auto mb-3">1</div>
+                    <h6 class="fw-bold">Находите рецепт</h6>
+                    <p class="text-muted small px-lg-4">В книге рецептов, у себя в соцсетях или просто крутите колесо, если не знаете, что готовить.</p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div class="how-step-badge mx-auto mb-3">2</div>
+                    <h6 class="fw-bold">Сохраняете к себе</h6>
+                    <p class="text-muted small px-lg-4">Рецепт попадает в вашу личную книгу — больше никаких потерянных заметок и закладок.</p>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div class="how-step-badge mx-auto mb-3">3</div>
+                    <h6 class="fw-bold">Готовите с удовольствием</h6>
+                    <p class="text-muted small px-lg-4">Открываете рецепт в любой момент — ингредиенты, шаги и всё нужное всегда под рукой.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== CTA-баннер снизу ===== -->
+        <div class="home-cta text-center rounded-4 my-5 p-5">
+            <h4 class="fw-bold text-white mb-2">Готовы навести порядок в своих рецептах?</h4>
+            <p class="text-white-50 mb-4">Начните с книги рецептов или сохраните первый рецепт из соцсетей прямо сейчас.</p>
+            <div class="d-flex justify-content-center gap-3 flex-wrap">
+                <a href="@Url.Action("Index", "RecipeBook")" class="btn btn-light fw-bold px-4 py-2 rounded-3 shadow-sm">📖 Книга рецептов</a>
+                <a href="@Url.Action("MyRecipes", "Recipes")" class="btn btn-outline-light fw-bold px-4 py-2 rounded-3">📱 Мои рецепты</a>
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -240,43 +283,6 @@
             measure();
             buildDots();
             startAutoplay();
-        })();
-
-        // ================= МИНИ-КАРУСЕЛЬ ФАКТОВ (отдельный, независимый блок) =================
-        (function () {
-            const factLabel = document.getElementById('factLabel');
-            const factText = document.getElementById('factText');
-            const factDots = document.getElementById('factDots');
-            if (!factLabel || !factText || !factDots) return;
-
-            const facts = [
-                { label: '💡 А знаете ли вы?', text: 'На каждую «обычную» веб-страничку приходится пять страниц с порнографическим содержанием.' },
-                { label: '💡 А знаете ли вы?', text: 'The letters KGB stand for Komitet Gosudarstvennoy Bezopasnosti.' },
-                { label: '📌 Ещё интересное', text: 'В Вермонте соотношение коров и людей составляет 10:1.' },
-                { label: '📌 Ещё интересное', text: 'В XVI веке на Филиппинах йо-йо использовалось в качестве оружия.' }
-            ];
-
-            let factIndex = 0;
-
-            facts.forEach(function (_, i) {
-                const dot = document.createElement('span');
-                dot.className = 'fact-dot' + (i === 0 ? ' active' : '');
-                dot.addEventListener('click', function () { showFact(i); });
-                factDots.appendChild(dot);
-            });
-
-            function showFact(i) {
-                factIndex = i;
-                factLabel.textContent = facts[i].label;
-                factText.textContent = facts[i].text;
-                Array.from(factDots.children).forEach(function (d, idx) {
-                    d.classList.toggle('active', idx === i);
-                });
-            }
-
-            setInterval(function () {
-                showFact((factIndex + 1) % facts.length);
-            }, 6000);
         })();
     </script>
 }
