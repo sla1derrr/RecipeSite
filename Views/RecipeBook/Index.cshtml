@@ -4,113 +4,304 @@
     var categories = ViewBag.Categories as List<string> ?? new List<string>();
     var selectedCategory = ViewBag.SelectedCategory as string;
     var searchQuery = ViewBag.SearchQuery as string;
+    var ingredientQuery = ViewBag.IngredientQuery as string;
+
+    var categoryIcons = new Dictionary<string, string>
+    {
+        { "Простые домашние", "🏠" },
+        { "Beef", "🥩" },
+        { "Breakfast", "🍳" },
+        { "Chicken", "🍗" },
+        { "Dessert", "🍰" },
+        { "Goat", "🐐" },
+        { "Lamb", "🍖" },
+        { "Miscellaneous", "🍽️" },
+        { "Pasta", "🍝" },
+        { "Pork", "🥓" },
+        { "Seafood", "🦐" },
+        { "Side", "🥗" },
+        { "Starter", "🥟" },
+        { "Vegan", "🌱" },
+        { "Vegetarian", "🥦" }
+    };
+
+    string IconFor(string name) => categoryIcons.TryGetValue(name, out var ic) ? ic : "🍴";
 }
 
-<div class="container mt-4 mb-5">
-    <!-- Единая большая карточка-обертка в стиле Foodify -->
-    <div class="card shadow border-0 rounded-4 p-4 p-md-5 bg-white">
-        
-        <!-- Заголовок внутри карточки -->
-        <h3 class="fw-bold mb-4 text-dark">Книга рецептов 🌍</h3>
+<div class="container mt-4 mb-5 recipebook-page">
+    <div class="recipebook-hero rounded-4 p-4 p-md-5 mb-4 text-white">
+        <h3 class="fw-bold mb-1">Книга рецептов 🌍</h3>
+        <p class="mb-0 opacity-75">Тысячи блюд со всего мира — от простых ужинов до праздничных рецептов</p>
+    </div>
 
-        <div class="row g-4">
-            <!-- Левая колонка: поиск и категории -->
-            <div class="col-lg-3">
-                <!-- Блок поиска -->
-                <div class="p-3 rounded-4 bg-light border mb-3">
-                    <form asp-controller="RecipeBook" asp-action="Index" method="get">
-                        <label class="form-label text-muted small fw-bold">Поиск</label>
-                        <input type="text" name="search" class="form-control rounded-3 py-2" placeholder="Найти блюдо..." value="@searchQuery" />
-                    </form>
-                </div>
-
-                <!-- Блок категорий -->
-                <div class="p-3 rounded-4 bg-light border">
-                    <label class="form-label text-muted small fw-bold mb-2">Категории</label>
-                    <div class="list-group list-group-flush rounded-3 overflow-hidden" style="max-height: 420px; overflow-y: auto;">
-                        @{
-                            var homeStyleActive = (selectedCategory == "Простые домашние" && string.IsNullOrEmpty(searchQuery)) ? "active text-white" : "text-dark bg-transparent";
-                            var activeStyle = homeStyleActive.Contains("active") ? "background-color: #ff6b8b; border-color: #ff6b8b;" : "";
-                        }
-                        <a class="list-group-item list-group-item-action category-filter border-0 py-2 @homeStyleActive"
-                           style="@activeStyle"
-                           asp-controller="RecipeBook" asp-action="Index" asp-route-category="Простые домашние">
-                            🏠 Простые домашние
-                        </a>
-                        
-                        @foreach (var cat in categories)
-                        {
-                            var isCatActive = (cat == selectedCategory && string.IsNullOrEmpty(searchQuery));
-                            var catClass = isCatActive ? "active text-white" : "text-dark bg-transparent";
-                            var catStyle = isCatActive ? "background-color: #ff6b8b; border-color: #ff6b8b;" : "";
-
-                            <a class="list-group-item list-group-item-action category-filter border-0 py-2 @catClass"
-                               style="@catStyle"
-                               asp-controller="RecipeBook" asp-action="Index" asp-route-category="@cat">
-                                @cat
-                            </a>
-                        }
+    <div class="row g-4">
+        <!-- Левая колонка: поиск и категории -->
+        <div class="col-lg-3">
+            <div class="rb-panel p-3 mb-3">
+                <form asp-controller="RecipeBook" asp-action="Index" method="get">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Поиск</label>
+                    <div class="rb-search-wrap">
+                        <i class="rb-search-icon">🔍</i>
+                        <input type="text" name="search" class="form-control rb-search-input" placeholder="Найти блюдо..." value="@searchQuery" />
                     </div>
-                </div>
+                </form>
             </div>
 
-            <!-- Правая колонка: список блюд -->
-            <div class="col-lg-9">
-                @if (!string.IsNullOrEmpty(searchQuery))
-                {
-                    <p class="text-muted mb-3 small">Результаты поиска по запросу «@searchQuery»</p>
-                }
+            <div class="rb-panel p-3 mb-3">
+                <form asp-controller="RecipeBook" asp-action="Index" method="get">
+                    <label class="form-label text-muted small fw-bold text-uppercase">Поиск по продукту</label>
+                    <div class="rb-search-wrap">
+                        <i class="rb-search-icon">🥕</i>
+                        <input type="text" name="ingredient" class="form-control rb-search-input" placeholder="Например: помидоры, картошка..." value="@ingredientQuery" />
+                    </div>
+                    <div class="form-text mt-1" style="font-size: 0.78rem;">Покажет блюда, в состав которых входит этот продукт</div>
+                </form>
+            </div>
 
-                <div class="row g-4">
-                    @if (Model == null || !Model.Any())
-                    {
-                        <div class="col-12 text-center py-5">
-                            <p class="text-muted fs-5">Ничего не найдено 🔍</p>
-                        </div>
+            <div class="rb-panel p-3">
+                <label class="form-label text-muted small fw-bold text-uppercase mb-2">Категории</label>
+                <div class="rb-category-list">
+                    @{
+                        var isHomeActive = (selectedCategory == "Простые домашние" && string.IsNullOrEmpty(searchQuery));
                     }
-                    @foreach (var recipe in Model!)
+                    <a class="rb-category-chip @(isHomeActive ? "active" : "")"
+                       asp-controller="RecipeBook" asp-action="Index" asp-route-category="Простые домашние">
+                        <span class="rb-chip-icon">🏠</span>
+                        <span>Простые домашние</span>
+                    </a>
+
+                    @foreach (var cat in categories)
                     {
-                        <div class="col-md-4">
-                            <a asp-controller="RecipeBook" asp-action="Details" asp-route-id="@recipe.Id" class="text-decoration-none text-dark h-100 d-block">
-                                <!-- Карточка отдельного рецепта со скруглениями и тенью -->
-                                <div class="card h-100 border shadow-sm rounded-4 overflow-hidden recipe-card bg-white" style="transition: transform 0.2s;">
-                                    @if (!string.IsNullOrEmpty(recipe.ImageUrl))
-                                    {
-                                        <img src="@recipe.ImageUrl" class="card-img-top" alt="@recipe.Title" style="height:160px; object-fit:cover;" />
-                                    }
-                                    else
-                                    {
-                                        <div class="recipe-placeholder d-flex align-items-center justify-content-center bg-light text-muted fs-1" style="height:160px;">🍽️</div>
-                                    }
-                                    <div class="card-body d-flex flex-column justify-content-between p-3">
-                                        @if (!string.IsNullOrEmpty(recipe.Category))
-                                        {
-                                            <div>
-                                                <span class="badge rounded-pill bg-light text-danger border px-2 py-1 mb-2 small">@recipe.Category</span>
-                                            </div>
-                                        }
-                                        <h6 class="card-title fw-bold text-dark mb-0">@recipe.Title</h6>
-                                    </div>
-                                </div>
-                            </a>
-                        </div>
+                        var isCatActive = (cat == selectedCategory && string.IsNullOrEmpty(searchQuery));
+                        <a class="rb-category-chip @(isCatActive ? "active" : "")"
+                           asp-controller="RecipeBook" asp-action="Index" asp-route-category="@cat">
+                            <span class="rb-chip-icon">@IconFor(cat)</span>
+                            <span>@cat</span>
+                        </a>
                     }
                 </div>
             </div>
         </div>
 
+        <!-- Правая колонка: список блюд -->
+        <div class="col-lg-9">
+            @if (!string.IsNullOrEmpty(ingredientQuery))
+            {
+                <p class="text-muted mb-3 d-flex align-items-center gap-2">
+                    <span class="fs-5">🥕</span>
+                    <span>Блюда с ингредиентом «<strong>@ingredientQuery</strong>»</span>
+                </p>
+            }
+            else if (!string.IsNullOrEmpty(searchQuery))
+            {
+                <p class="text-muted mb-3">Результаты поиска по запросу «<strong>@searchQuery</strong>»</p>
+            }
+            else if (!string.IsNullOrEmpty(selectedCategory))
+            {
+                <p class="text-muted mb-3 d-flex align-items-center gap-2">
+                    <span class="fs-5">@IconFor(selectedCategory)</span>
+                    <span>Категория: <strong>@selectedCategory</strong></span>
+                </p>
+            }
+
+            <div class="row g-4">
+                @if (Model == null || !Model.Any())
+                {
+                    <div class="col-12 text-center py-5">
+                        <div class="fs-1 mb-2">🔍</div>
+                        <p class="text-muted fs-5 mb-0">Ничего не найдено</p>
+                        <p class="text-muted small">Попробуй другой запрос или категорию</p>
+                    </div>
+                }
+                @foreach (var recipe in Model!)
+                {
+                    <div class="col-md-4">
+                        <a asp-controller="RecipeBook" asp-action="Details" asp-route-id="@recipe.Id" class="text-decoration-none text-dark h-100 d-block">
+                            <div class="rb-card h-100">
+                                <div class="rb-card-media">
+                                    @if (!string.IsNullOrEmpty(recipe.ImageUrl))
+                                    {
+                                        <img src="@recipe.ImageUrl" alt="@recipe.Title" loading="lazy" />
+                                    }
+                                    else
+                                    {
+                                        <div class="rb-card-placeholder">🍽️</div>
+                                    }
+                                    <div class="rb-card-gradient"></div>
+                                    @if (!string.IsNullOrEmpty(recipe.Category))
+                                    {
+                                        <span class="rb-card-badge">@IconFor(recipe.Category) @recipe.Category</span>
+                                    }
+                                    <h6 class="rb-card-title">@recipe.Title</h6>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
     </div>
 </div>
 
 <style>
-    /* Плавное увеличение карточки рецепта при наведении мышки */
-    .recipe-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 .5rem 1rem rgba(0,0,0,.1) !important;
+    .recipebook-hero {
+        background: linear-gradient(135deg, #ff6b8b 0%, #ff9966 100%);
+        box-shadow: 0 10px 30px rgba(255, 107, 139, 0.3);
     }
-    /* Переопределение цвета активного элемента в списке категорий под стиль сайта */
-    .list-group-item.active {
-        background-color: #ff6b8b !important;
-        border-color: #ff6b8b !important;
+
+    .rb-panel {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 18px;
+        border: 1px solid rgba(0,0,0,0.05);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+    }
+
+    .rb-search-wrap {
+        position: relative;
+    }
+
+    .rb-search-icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-style: normal;
+        opacity: 0.5;
+        font-size: 0.9rem;
+    }
+
+    .rb-search-input {
+        border-radius: 12px;
+        padding: 10px 14px 10px 38px;
+        border: 1px solid #eee;
+        background: #fafafa;
+    }
+
+    .rb-search-input:focus {
+        background: white;
+        border-color: #ff9ab0;
+        box-shadow: 0 0 0 0.2rem rgba(255, 107, 139, 0.15);
+    }
+
+    .rb-category-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        max-height: 480px;
+        overflow-y: auto;
+        padding-right: 2px;
+    }
+
+    .rb-category-list::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .rb-category-list::-webkit-scrollbar-thumb {
+        background: #ffd2dd;
+        border-radius: 10px;
+    }
+
+    .rb-category-chip {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 12px;
+        border-radius: 12px;
+        color: #444;
+        font-weight: 600;
+        font-size: 0.92rem;
+        text-decoration: none;
+        transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+    }
+
+    .rb-chip-icon {
+        font-size: 1.05rem;
+        line-height: 1;
+        flex-shrink: 0;
+    }
+
+    .rb-category-chip:hover {
+        background: #fff0f4;
+        color: #ff5e8f;
+        transform: translateX(3px);
+    }
+
+    .rb-category-chip.active {
+        background: linear-gradient(90deg, #ff6b8b, #ff9966);
+        color: white;
+        box-shadow: 0 4px 12px rgba(255, 107, 139, 0.35);
+    }
+
+    .rb-card {
+        position: relative;
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.07);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        background: white;
+    }
+
+    .rb-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 16px 30px rgba(0,0,0,0.15);
+    }
+
+    .rb-card-media {
+        position: relative;
+        height: 220px;
+        overflow: hidden;
+    }
+
+    .rb-card-media img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.35s ease;
+    }
+
+    .rb-card:hover .rb-card-media img {
+        transform: scale(1.08);
+    }
+
+    .rb-card-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        background: linear-gradient(135deg, #ffe9d6, #ffd6e8);
+    }
+
+    .rb-card-gradient {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.75) 100%);
+    }
+
+    .rb-card-badge {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        background: rgba(255,255,255,0.92);
+        color: #ff5e8f;
+        font-weight: 700;
+        font-size: 0.72rem;
+        padding: 5px 10px;
+        border-radius: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+
+    .rb-card-title {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 12px;
+        color: white;
+        font-weight: 700;
+        font-size: 1rem;
+        margin: 0;
+        text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        line-height: 1.25;
     }
 </style>

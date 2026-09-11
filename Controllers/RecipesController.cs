@@ -23,7 +23,7 @@ namespace RecipeSite.Controllers
 
         public static readonly string[] Categories = new[]
         {
-            "Супы", "Вторые", "Сладкое", "Закуски", "Салаты"
+            "Завтраки", "Супы", "Вторые", "Сладкое", "Закуски", "Салаты"
         };
 
         [Authorize]

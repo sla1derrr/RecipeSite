@@ -19,16 +19,30 @@ namespace RecipeSite.Controllers
             _edamamService = edamamService;
         }
 
-        public async Task<IActionResult> Index(string? category, string? search)
+        public async Task<IActionResult> Index(string? category, string? search, string? ingredient)
         {
             var categories = await _mealDbService.GetCategoriesAsync();
             ViewBag.Categories = categories;
             ViewBag.SelectedCategory = category;
             ViewBag.SearchQuery = search;
+            ViewBag.IngredientQuery = ingredient;
 
             var allRecipes = new List<CatalogRecipe>();
 
-            if (!string.IsNullOrWhiteSpace(search))
+            if (!string.IsNullOrWhiteSpace(ingredient))
+            {
+                var englishIngredient = IngredientTranslator.ToEnglish(ingredient);
+                var meals = await _mealDbService.GetMealsByIngredientAsync(englishIngredient);
+                allRecipes.AddRange(meals.Select(m => new CatalogRecipe
+                {
+                    Id = $"meal_{m.Id}",
+                    Source = "meal",
+                    Title = m.Title,
+                    ImageUrl = m.ImageUrl,
+                    Category = m.Category
+                }));
+            }
+            else if (!string.IsNullOrWhiteSpace(search))
             {
                 var mealTask = _mealDbService.SearchMealsAsync(search);
                 var spoonTask = _spoonacularService.SearchAsync(search);

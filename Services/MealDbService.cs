@@ -100,6 +100,12 @@ namespace RecipeSite.Services
             return response?.Meals ?? new List<MealDbMeal>();
         }
 
+        public async Task<List<MealDbMeal>> GetMealsByIngredientAsync(string ingredient)
+        {
+            var response = await _httpClient.GetFromJsonAsync<MealDbResponse>($"{BaseUrl}/filter.php?i={Uri.EscapeDataString(ingredient)}");
+            return response?.Meals ?? new List<MealDbMeal>();
+        }
+
         public async Task<MealDbMeal?> GetMealByIdAsync(string id)
         {
             var response = await _httpClient.GetFromJsonAsync<MealDbResponse>($"{BaseUrl}/lookup.php?i={Uri.EscapeDataString(id)}");

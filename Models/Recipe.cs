@@ -10,7 +10,7 @@ namespace RecipeSite.Models
         [StringLength(100)]
         public string Title { get; set; } = string.Empty;
 
-        // Категория: Супы, Вторые, Сладкое, Закуски, Салаты
+        // Категория: Завтраки, Супы, Вторые, Сладкое, Закуски, Салаты
         [Required]
         public string Category { get; set; } = string.Empty;
 
