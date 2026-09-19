@@ -60,8 +60,11 @@ namespace RecipeSite.Controllers
             List<ApplicationUser> users = new();
             if (!string.IsNullOrWhiteSpace(query))
             {
+                var pattern = "%" + query.Trim() + "%";
                 users = await _context.Users
-                    .Where(u => u.Id != userId && u.UserName != null && u.UserName.Contains(query))
+                    .Where(u => u.Id != userId &&
+                                ((u.FirstName != null && EF.Functions.ILike(u.FirstName, pattern)) ||
+                                 (u.UserName != null && EF.Functions.ILike(u.UserName, pattern))))
                     .Take(30)
                     .ToListAsync();
             }
