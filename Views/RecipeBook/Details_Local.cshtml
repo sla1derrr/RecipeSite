@@ -1,0 +1,56 @@
+@model RecipeSite.Models.SimpleRecipe
+@{
+    ViewData["Title"] = Model.Title;
+    var ingredientList = Model.Ingredients
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+}
+
+<div class="container mt-4 mb-5">
+    <a asp-controller="RecipeBook" asp-action="Index" asp-route-category="Простые домашние" class="btn btn-outline-secondary mb-3 rounded-3 px-3 py-2 border-0 bg-white shadow-sm text-dark fw-bold">
+        ← Назад к каталогу
+    </a>
+
+    <div class="card shadow border-0 rounded-4 p-4 p-md-5 bg-white">
+        <div class="row g-4 align-items-center">
+            <div class="col-lg-5">
+                @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                {
+                    <img src="@Model.ImageUrl" alt="@Model.Title" class="img-fluid rounded-4 shadow-sm w-100" style="object-fit: cover; max-height: 350px;" />
+                }
+                else
+                {
+                    <div class="d-flex align-items-center justify-content-center bg-light rounded-4 text-muted fs-1 shadow-sm" style="height: 250px;">🏠</div>
+                }
+            </div>
+
+            <div class="col-lg-7">
+                <h2 class="fw-bold mb-3 text-dark">@Model.Title</h2>
+
+                <div class="d-flex flex-wrap gap-2 mb-4">
+                    <span class="badge rounded-pill bg-light text-secondary border px-3 py-2">📂 @Model.SubCategory</span>
+                    @if (!string.IsNullOrEmpty(Model.TimeEstimate))
+                    {
+                        <span class="badge rounded-pill bg-light text-dark border px-3 py-2">⏱ @Model.TimeEstimate</span>
+                    }
+                </div>
+
+                <h5 class="fw-bold text-dark mb-3">Ингредиенты</h5>
+                <ul class="list-group list-group-flush mb-4 border rounded-3 overflow-hidden" style="max-height: 250px; overflow-y: auto;">
+                    @foreach (var ingredient in ingredientList)
+                    {
+                        <li class="list-group-item bg-transparent px-3 py-2 text-secondary border-bottom">
+                            @ingredient
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        <hr class="my-4 text-muted opacity-25" />
+
+        <h5 class="fw-bold text-dark mb-3">Способ приготовления</h5>
+        <div class="p-3 rounded-3 bg-light border-0">
+            <p class="text-secondary mb-0" style="white-space: pre-line; line-height: 1.6;">@Model.Steps</p>
+        </div>
+    </div>
+</div>

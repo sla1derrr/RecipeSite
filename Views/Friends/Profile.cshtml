@@ -1,0 +1,80 @@
+@model List<RecipeSite.Models.Recipe>
+@{
+    var profileUser = ViewBag.ProfileUser as RecipeSite.Models.ApplicationUser;
+    var areFriends = ViewBag.AreFriends as bool? ?? false;
+    ViewData["Title"] = profileUser?.UserName ?? "Профиль";
+
+    var categoryIcons = new Dictionary<string, string>
+    {
+        { "Завтраки", "🥞" },
+        { "Супы", "🍲" },
+        { "Вторые", "🍛" },
+        { "Сладкое", "🍰" },
+        { "Закуски", "🥟" },
+        { "Салаты", "🥗" }
+    };
+}
+
+<div class="container mt-4 mb-5">
+    <a asp-controller="Friends" asp-action="Index" class="btn btn-outline-secondary mb-3 rounded-3 px-3 py-2 border-0 bg-white shadow-sm text-dark fw-bold">
+        ← Назад к друзьям
+    </a>
+
+    <div class="card shadow border-0 rounded-4 p-4 p-md-5 bg-white">
+        <div class="d-flex align-items-center gap-3 mb-4">
+            @if (!string.IsNullOrEmpty(profileUser?.AvatarUrl))
+            {
+                <img src="@profileUser.AvatarUrl" style="width:64px;height:64px;border-radius:50%;object-fit:cover;" />
+            }
+            else
+            {
+                <span style="font-size:48px;">@(string.IsNullOrEmpty(profileUser?.AvatarPreset) ? "👤" : profileUser.AvatarPreset)</span>
+            }
+            <div>
+                <h3 class="fw-bold text-dark mb-0">@profileUser?.UserName</h3>
+                @if (!string.IsNullOrEmpty(profileUser?.FirstName))
+                {
+                    <div class="text-muted">@profileUser.FirstName @profileUser.LastName</div>
+                }
+            </div>
+        </div>
+
+        @if (!areFriends)
+        {
+            <div class="text-center py-5">
+                <div class="fs-1 mb-2">🔒</div>
+                <p class="text-muted fs-5 mb-0">Рецепты этого пользователя видны только друзьям</p>
+                <p class="text-muted small">Добавьте его в друзья, чтобы посмотреть, что он готовит</p>
+            </div>
+        }
+        else
+        {
+            <h5 class="fw-bold text-dark mb-3">Рецепты @(profileUser?.UserName) 📖</h5>
+            @if (!Model.Any())
+            {
+                <p class="text-muted text-center py-4">Пока нет добавленных рецептов</p>
+            }
+            <div class="row g-4">
+                @foreach (var recipe in Model)
+                {
+                    var icon = categoryIcons.TryGetValue(recipe.Category, out var emoji) ? emoji : "🍽️";
+                    <div class="col-md-4">
+                        <div class="card h-100 border shadow-sm rounded-4 overflow-hidden bg-white">
+                            <div class="d-flex align-items-center justify-content-center bg-light text-muted fs-1" style="height: 140px;">
+                                @icon
+                            </div>
+                            <div class="card-body p-3">
+                                <span class="badge rounded-pill bg-light text-danger border px-2 py-1 mb-2 small">@recipe.Category</span>
+                                <h6 class="card-title fw-bold text-dark mb-2">@recipe.Title</h6>
+                                @if (!string.IsNullOrEmpty(recipe.SourceUrl))
+                                {
+                                    <a href="@recipe.SourceUrl" target="_blank" class="d-block text-decoration-none small" style="color: #ff6b8b;">🔗 Открыть источник (TikTok/Instagram)</a>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

@@ -78,6 +78,7 @@ builder.Services.AddHttpClient<RecipeSite.Services.MealDbService>();
 builder.Services.AddHttpClient<RecipeSite.Services.SpoonacularService>();
 builder.Services.AddHttpClient<RecipeSite.Services.EdamamService>();
 builder.Services.AddHttpClient<RecipeSite.Services.FactsService>();
+builder.Services.AddSingleton<RecipeSite.Services.SimpleRecipeService>();
 builder.Services.AddLocalization();
 
 builder.Services.Configure<RequestLocalizationOptions>(options =>

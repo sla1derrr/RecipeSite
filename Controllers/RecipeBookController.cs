@@ -8,15 +8,18 @@ namespace RecipeSite.Controllers
         private readonly MealDbService _mealDbService;
         private readonly SpoonacularService _spoonacularService;
         private readonly EdamamService _edamamService;
+        private readonly SimpleRecipeService _simpleRecipeService;
 
         public RecipeBookController(
             MealDbService mealDbService,
             SpoonacularService spoonacularService,
-            EdamamService edamamService)
+            EdamamService edamamService,
+            SimpleRecipeService simpleRecipeService)
         {
             _mealDbService = mealDbService;
             _spoonacularService = spoonacularService;
             _edamamService = edamamService;
+            _simpleRecipeService = simpleRecipeService;
         }
 
         public async Task<IActionResult> Index(string? category, string? search, string? ingredient)
@@ -76,12 +79,7 @@ namespace RecipeSite.Controllers
             }
             else if (category == "Простые домашние")
             {
-                var spoonTask = _spoonacularService.GetEasyRecipesAsync();
-                var edamamTask = _edamamService.GetHomeStyleRecipesAsync();
-                await Task.WhenAll(spoonTask, edamamTask);
-
-                allRecipes.AddRange(spoonTask.Result);
-                allRecipes.AddRange(edamamTask.Result);
+                allRecipes.AddRange(_simpleRecipeService.ToCatalogRecipes());
                 ViewBag.SelectedCategory = "Простые домашние";
             }
             else
@@ -107,6 +105,15 @@ namespace RecipeSite.Controllers
             if (string.IsNullOrWhiteSpace(id))
             {
                 return NotFound();
+            }
+
+            if (id.StartsWith("local_"))
+            {
+                var recipe = _simpleRecipeService.GetById(id);
+                if (recipe == null) return NotFound();
+
+                ViewBag.Source = "local";
+                return View("Details_Local", recipe);
             }
 
             if (id.StartsWith("meal_"))
