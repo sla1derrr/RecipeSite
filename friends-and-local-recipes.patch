@@ -1,0 +1,1459 @@
+From 7ed72380dd8547ccf8c4769a123f5a3790edd5fd Mon Sep 17 00:00:00 2001
+From: Claude <assistant@anthropic.com>
+Date: Sat, 19 Sep 2026 12:28:15 +0000
+Subject: [PATCH] =?UTF-8?q?Add=20friends=20system=20(search,=20requests,?=
+ =?UTF-8?q?=20friend=20profiles)=20and=20local=20'=D0=9F=D1=80=D0=BE=D1=81?=
+ =?UTF-8?q?=D1=82=D1=8B=D0=B5=20=D0=B4=D0=BE=D0=BC=D0=B0=D1=88=D0=BD=D0=B8?=
+ =?UTF-8?q?=D0=B5'=20recipe=20catalog?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ Controllers/FriendsController.cs              | 216 ++++++++++
+ Controllers/RecipeBookController.cs           |  21 +-
+ Data/ApplicationDbContext.cs                  |  22 +
+ .../20260919120000_AddFriendships.Designer.cs | 400 ++++++++++++++++++
+ .../20260919120000_AddFriendships.cs          |  62 +++
+ .../ApplicationDbContextModelSnapshot.cs      |  51 +++
+ Models/Friendship.cs                          |  30 ++
+ Models/SimpleRecipe.cs                        |  14 +
+ Program.cs                                    |   1 +
+ Services/SimpleRecipeService.cs               |  46 ++
+ Views/Friends/Index.cshtml                    | 102 +++++
+ Views/Friends/Profile.cshtml                  |  80 ++++
+ Views/Friends/Search.cshtml                   |  76 ++++
+ Views/RecipeBook/Details_Local.cshtml         |  56 +++
+ Views/Shared/_Layout.cshtml                   |   3 +
+ wwwroot/data/simple-recipes.json              |  85 ++++
+ 16 files changed, 1258 insertions(+), 7 deletions(-)
+ create mode 100644 Controllers/FriendsController.cs
+ create mode 100644 Data/Migrations/20260919120000_AddFriendships.Designer.cs
+ create mode 100644 Data/Migrations/20260919120000_AddFriendships.cs
+ create mode 100644 Models/Friendship.cs
+ create mode 100644 Models/SimpleRecipe.cs
+ create mode 100644 Services/SimpleRecipeService.cs
+ create mode 100644 Views/Friends/Index.cshtml
+ create mode 100644 Views/Friends/Profile.cshtml
+ create mode 100644 Views/Friends/Search.cshtml
+ create mode 100644 Views/RecipeBook/Details_Local.cshtml
+ create mode 100644 wwwroot/data/simple-recipes.json
+
+diff --git a/Controllers/FriendsController.cs b/Controllers/FriendsController.cs
+new file mode 100644
+index 0000000..35381ad
+--- /dev/null
++++ b/Controllers/FriendsController.cs
+@@ -0,0 +1,216 @@
++using Microsoft.AspNetCore.Authorization;
++using Microsoft.AspNetCore.Identity;
++using Microsoft.AspNetCore.Mvc;
++using Microsoft.EntityFrameworkCore;
++using RecipeSite.Data;
++using RecipeSite.Models;
++
++namespace RecipeSite.Controllers
++{
++    [Authorize]
++    public class FriendsController : Controller
++    {
++        private readonly ApplicationDbContext _context;
++        private readonly UserManager<ApplicationUser> _userManager;
++
++        public FriendsController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
++        {
++            _context = context;
++            _userManager = userManager;
++        }
++
++        // Список друзей + входящие/исходящие заявки
++        public async Task<IActionResult> Index()
++        {
++            var userId = _userManager.GetUserId(User)!;
++
++            var accepted = await _context.Friendships
++                .Include(f => f.Requester)
++                .Include(f => f.Addressee)
++                .Where(f => f.Status == FriendshipStatus.Accepted &&
++                            (f.RequesterId == userId || f.AddresseeId == userId))
++                .ToListAsync();
++
++            var friends = accepted
++                .Select(f => f.RequesterId == userId ? f.Addressee : f.Requester)
++                .Where(u => u != null)
++                .ToList();
++
++            var incomingRequests = await _context.Friendships
++                .Include(f => f.Requester)
++                .Where(f => f.Status == FriendshipStatus.Pending && f.AddresseeId == userId)
++                .ToListAsync();
++
++            var outgoingRequests = await _context.Friendships
++                .Include(f => f.Addressee)
++                .Where(f => f.Status == FriendshipStatus.Pending && f.RequesterId == userId)
++                .ToListAsync();
++
++            ViewBag.IncomingRequests = incomingRequests;
++            ViewBag.OutgoingRequests = outgoingRequests;
++            return View(friends);
++        }
++
++        // Поиск по нику
++        public async Task<IActionResult> Search(string? query)
++        {
++            var userId = _userManager.GetUserId(User)!;
++            ViewBag.Query = query;
++
++            List<ApplicationUser> users = new();
++            if (!string.IsNullOrWhiteSpace(query))
++            {
++                users = await _context.Users
++                    .Where(u => u.Id != userId && u.UserName != null && u.UserName.Contains(query))
++                    .Take(30)
++                    .ToListAsync();
++            }
++
++            var relevantIds = users.Select(u => u.Id).ToList();
++            var relations = await _context.Friendships
++                .Where(f => (f.RequesterId == userId && relevantIds.Contains(f.AddresseeId)) ||
++                            (f.AddresseeId == userId && relevantIds.Contains(f.RequesterId)))
++                .ToListAsync();
++
++            var statusByUserId = new Dictionary<string, string>();
++            foreach (var otherId in relevantIds)
++            {
++                var rel = relations.FirstOrDefault(f =>
++                    (f.RequesterId == userId && f.AddresseeId == otherId) ||
++                    (f.AddresseeId == userId && f.RequesterId == otherId));
++
++                if (rel == null)
++                {
++                    statusByUserId[otherId] = "none";
++                }
++                else if (rel.Status == FriendshipStatus.Accepted)
++                {
++                    statusByUserId[otherId] = "friends";
++                }
++                else if (rel.RequesterId == userId)
++                {
++                    statusByUserId[otherId] = "pending_out";
++                }
++                else
++                {
++                    statusByUserId[otherId] = "pending_in";
++                }
++            }
++
++            ViewBag.StatusByUserId = statusByUserId;
++            return View(users);
++        }
++
++        [HttpPost]
++        public async Task<IActionResult> SendRequest(string userId, string? returnQuery)
++        {
++            var myId = _userManager.GetUserId(User)!;
++
++            if (userId != myId)
++            {
++                var exists = await _context.Friendships.AnyAsync(f =>
++                    (f.RequesterId == myId && f.AddresseeId == userId) ||
++                    (f.RequesterId == userId && f.AddresseeId == myId));
++
++                if (!exists)
++                {
++                    _context.Friendships.Add(new Friendship
++                    {
++                        RequesterId = myId,
++                        AddresseeId = userId,
++                        Status = FriendshipStatus.Pending
++                    });
++                    await _context.SaveChangesAsync();
++                }
++            }
++
++            if (!string.IsNullOrEmpty(returnQuery))
++            {
++                return RedirectToAction("Search", new { query = returnQuery });
++            }
++            return RedirectToAction("Index");
++        }
++
++        [HttpPost]
++        public async Task<IActionResult> AcceptRequest(int id)
++        {
++            var myId = _userManager.GetUserId(User)!;
++            var request = await _context.Friendships
++                .FirstOrDefaultAsync(f => f.Id == id && f.AddresseeId == myId && f.Status == FriendshipStatus.Pending);
++
++            if (request != null)
++            {
++                request.Status = FriendshipStatus.Accepted;
++                await _context.SaveChangesAsync();
++            }
++
++            return RedirectToAction("Index");
++        }
++
++        [HttpPost]
++        public async Task<IActionResult> DeclineRequest(int id)
++        {
++            var myId = _userManager.GetUserId(User)!;
++            var request = await _context.Friendships
++                .FirstOrDefaultAsync(f => f.Id == id && (f.AddresseeId == myId || f.RequesterId == myId));
++
++            if (request != null)
++            {
++                _context.Friendships.Remove(request);
++                await _context.SaveChangesAsync();
++            }
++
++            return RedirectToAction("Index");
++        }
++
++        [HttpPost]
++        public async Task<IActionResult> RemoveFriend(string userId)
++        {
++            var myId = _userManager.GetUserId(User)!;
++            var request = await _context.Friendships.FirstOrDefaultAsync(f =>
++                f.Status == FriendshipStatus.Accepted &&
++                ((f.RequesterId == myId && f.AddresseeId == userId) ||
++                 (f.RequesterId == userId && f.AddresseeId == myId)));
++
++            if (request != null)
++            {
++                _context.Friendships.Remove(request);
++                await _context.SaveChangesAsync();
++            }
++
++            return RedirectToAction("Index");
++        }
++
++        // Профиль друга + его рецепты (видны только если вы друзья)
++        public async Task<IActionResult> Profile(string userId)
++        {
++            var myId = _userManager.GetUserId(User)!;
++
++            var profileUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
++            if (profileUser == null)
++            {
++                return NotFound();
++            }
++
++            var areFriends = userId == myId || await _context.Friendships.AnyAsync(f =>
++                f.Status == FriendshipStatus.Accepted &&
++                ((f.RequesterId == myId && f.AddresseeId == userId) ||
++                 (f.RequesterId == userId && f.AddresseeId == myId)));
++
++            ViewBag.AreFriends = areFriends;
++            ViewBag.ProfileUser = profileUser;
++
++            if (!areFriends)
++            {
++                return View(new List<Recipe>());
++            }
++
++            var recipes = await _context.Recipes
++                .Where(r => r.UserId == userId)
++                .OrderByDescending(r => r.CreatedAt)
++                .ToListAsync();
++
++            return View(recipes);
++        }
++    }
++}
+diff --git a/Controllers/RecipeBookController.cs b/Controllers/RecipeBookController.cs
+index 040c8d4..46db3d2 100644
+--- a/Controllers/RecipeBookController.cs
++++ b/Controllers/RecipeBookController.cs
+@@ -8,15 +8,18 @@ namespace RecipeSite.Controllers
+         private readonly MealDbService _mealDbService;
+         private readonly SpoonacularService _spoonacularService;
+         private readonly EdamamService _edamamService;
++        private readonly SimpleRecipeService _simpleRecipeService;
+ 
+         public RecipeBookController(
+             MealDbService mealDbService,
+             SpoonacularService spoonacularService,
+-            EdamamService edamamService)
++            EdamamService edamamService,
++            SimpleRecipeService simpleRecipeService)
+         {
+             _mealDbService = mealDbService;
+             _spoonacularService = spoonacularService;
+             _edamamService = edamamService;
++            _simpleRecipeService = simpleRecipeService;
+         }
+ 
+         public async Task<IActionResult> Index(string? category, string? search, string? ingredient)
+@@ -76,12 +79,7 @@ namespace RecipeSite.Controllers
+             }
+             else if (category == "Простые домашние")
+             {
+-                var spoonTask = _spoonacularService.GetEasyRecipesAsync();
+-                var edamamTask = _edamamService.GetHomeStyleRecipesAsync();
+-                await Task.WhenAll(spoonTask, edamamTask);
+-
+-                allRecipes.AddRange(spoonTask.Result);
+-                allRecipes.AddRange(edamamTask.Result);
++                allRecipes.AddRange(_simpleRecipeService.ToCatalogRecipes());
+                 ViewBag.SelectedCategory = "Простые домашние";
+             }
+             else
+@@ -109,6 +107,15 @@ namespace RecipeSite.Controllers
+                 return NotFound();
+             }
+ 
++            if (id.StartsWith("local_"))
++            {
++                var recipe = _simpleRecipeService.GetById(id);
++                if (recipe == null) return NotFound();
++
++                ViewBag.Source = "local";
++                return View("Details_Local", recipe);
++            }
++
+             if (id.StartsWith("meal_"))
+             {
+                 var realId = id["meal_".Length..];
+diff --git a/Data/ApplicationDbContext.cs b/Data/ApplicationDbContext.cs
+index 0475dfd..3dd5dc1 100644
+--- a/Data/ApplicationDbContext.cs
++++ b/Data/ApplicationDbContext.cs
+@@ -9,5 +9,27 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
+     : IdentityDbContext<ApplicationUser>(options), IDataProtectionKeyContext
+ {
+     public DbSet<Recipe> Recipes { get; set; }
++    public DbSet<Friendship> Friendships { get; set; }
+     public DbSet<Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey> DataProtectionKeys { get; set; }
++
++    protected override void OnModelCreating(ModelBuilder builder)
++    {
++        base.OnModelCreating(builder);
++
++        builder.Entity<Friendship>()
++            .HasOne(f => f.Requester)
++            .WithMany()
++            .HasForeignKey(f => f.RequesterId)
++            .OnDelete(DeleteBehavior.Restrict);
++
++        builder.Entity<Friendship>()
++            .HasOne(f => f.Addressee)
++            .WithMany()
++            .HasForeignKey(f => f.AddresseeId)
++            .OnDelete(DeleteBehavior.Restrict);
++
++        builder.Entity<Friendship>()
++            .HasIndex(f => new { f.RequesterId, f.AddresseeId })
++            .IsUnique();
++    }
+ }
+\ No newline at end of file
+diff --git a/Data/Migrations/20260919120000_AddFriendships.Designer.cs b/Data/Migrations/20260919120000_AddFriendships.Designer.cs
+new file mode 100644
+index 0000000..a4f8bbd
+--- /dev/null
++++ b/Data/Migrations/20260919120000_AddFriendships.Designer.cs
+@@ -0,0 +1,400 @@
++﻿// <auto-generated />
++using System;
++using Microsoft.EntityFrameworkCore;
++using Microsoft.EntityFrameworkCore.Infrastructure;
++using Microsoft.EntityFrameworkCore.Migrations;
++using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
++using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
++using RecipeSite.Data;
++
++#nullable disable
++
++namespace RecipeSite.Data.Migrations
++{
++    [DbContext(typeof(ApplicationDbContext))]
++    [Migration("20260919120000_AddFriendships")]
++    partial class AddFriendships
++    {
++        /// <inheritdoc />
++        protected override void BuildTargetModel(ModelBuilder modelBuilder)
++        {
++#pragma warning disable 612, 618
++            modelBuilder
++                .HasAnnotation("ProductVersion", "10.0.11")
++                .HasAnnotation("Relational:MaxIdentifierLength", 63);
++
++            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
++
++            modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
++                {
++                    b.Property<int>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("integer");
++
++                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
++
++                    b.Property<string>("FriendlyName")
++                        .HasColumnType("text");
++
++                    b.Property<string>("Xml")
++                        .HasColumnType("text");
++
++                    b.HasKey("Id");
++
++                    b.ToTable("DataProtectionKeys");
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
++                {
++                    b.Property<string>("Id")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ConcurrencyStamp")
++                        .IsConcurrencyToken()
++                        .HasColumnType("text");
++
++                    b.Property<string>("Name")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<string>("NormalizedName")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("NormalizedName")
++                        .IsUnique()
++                        .HasDatabaseName("RoleNameIndex");
++
++                    b.ToTable("AspNetRoles", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
++                {
++                    b.Property<int>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("integer");
++
++                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
++
++                    b.Property<string>("ClaimType")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ClaimValue")
++                        .HasColumnType("text");
++
++                    b.Property<string>("RoleId")
++                        .IsRequired()
++                        .HasColumnType("text");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("RoleId");
++
++                    b.ToTable("AspNetRoleClaims", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
++                {
++                    b.Property<int>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("integer");
++
++                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
++
++                    b.Property<string>("ClaimType")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ClaimValue")
++                        .HasColumnType("text");
++
++                    b.Property<string>("UserId")
++                        .IsRequired()
++                        .HasColumnType("text");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("UserId");
++
++                    b.ToTable("AspNetUserClaims", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
++                {
++                    b.Property<string>("LoginProvider")
++                        .HasMaxLength(128)
++                        .HasColumnType("character varying(128)");
++
++                    b.Property<string>("ProviderKey")
++                        .HasMaxLength(128)
++                        .HasColumnType("character varying(128)");
++
++                    b.Property<string>("ProviderDisplayName")
++                        .HasColumnType("text");
++
++                    b.Property<string>("UserId")
++                        .IsRequired()
++                        .HasColumnType("text");
++
++                    b.HasKey("LoginProvider", "ProviderKey");
++
++                    b.HasIndex("UserId");
++
++                    b.ToTable("AspNetUserLogins", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
++                {
++                    b.Property<string>("UserId")
++                        .HasColumnType("text");
++
++                    b.Property<string>("RoleId")
++                        .HasColumnType("text");
++
++                    b.HasKey("UserId", "RoleId");
++
++                    b.HasIndex("RoleId");
++
++                    b.ToTable("AspNetUserRoles", (string)null);
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
++                {
++                    b.Property<string>("UserId")
++                        .HasColumnType("text");
++
++                    b.Property<string>("LoginProvider")
++                        .HasMaxLength(128)
++                        .HasColumnType("character varying(128)");
++
++                    b.Property<string>("Name")
++                        .HasMaxLength(128)
++                        .HasColumnType("character varying(128)");
++
++                    b.Property<string>("Value")
++                        .HasColumnType("text");
++
++                    b.HasKey("UserId", "LoginProvider", "Name");
++
++                    b.ToTable("AspNetUserTokens", (string)null);
++                });
++
++            modelBuilder.Entity("RecipeSite.Models.ApplicationUser", b =>
++                {
++                    b.Property<string>("Id")
++                        .HasColumnType("text");
++
++                    b.Property<int>("AccessFailedCount")
++                        .HasColumnType("integer");
++
++                    b.Property<string>("AvatarPreset")
++                        .HasColumnType("text");
++
++                    b.Property<string>("AvatarUrl")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ConcurrencyStamp")
++                        .IsConcurrencyToken()
++                        .HasColumnType("text");
++
++                    b.Property<string>("Email")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<bool>("EmailConfirmed")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("FirstName")
++                        .HasColumnType("text");
++
++                    b.Property<string>("LastName")
++                        .HasColumnType("text");
++
++                    b.Property<bool>("LockoutEnabled")
++                        .HasColumnType("boolean");
++
++                    b.Property<DateTimeOffset?>("LockoutEnd")
++                        .HasColumnType("timestamp with time zone");
++
++                    b.Property<string>("NormalizedEmail")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<string>("NormalizedUserName")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.Property<string>("PasswordHash")
++                        .HasColumnType("text");
++
++                    b.Property<string>("PhoneNumber")
++                        .HasColumnType("text");
++
++                    b.Property<bool>("PhoneNumberConfirmed")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("SecurityStamp")
++                        .HasColumnType("text");
++
++                    b.Property<bool>("TwoFactorEnabled")
++                        .HasColumnType("boolean");
++
++                    b.Property<string>("UserName")
++                        .HasMaxLength(256)
++                        .HasColumnType("character varying(256)");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("NormalizedEmail")
++                        .HasDatabaseName("EmailIndex");
++
++                    b.HasIndex("NormalizedUserName")
++                        .IsUnique()
++                        .HasDatabaseName("UserNameIndex");
++
++                    b.ToTable("AspNetUsers", (string)null);
++                });
++
++            modelBuilder.Entity("RecipeSite.Models.Friendship", b =>
++                {
++                    b.Property<int>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("integer");
++
++                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
++
++                    b.Property<string>("AddresseeId")
++                        .IsRequired()
++                        .HasColumnType("text");
++
++                    b.Property<DateTime>("CreatedAt")
++                        .HasColumnType("timestamp without time zone");
++
++                    b.Property<string>("RequesterId")
++                        .IsRequired()
++                        .HasColumnType("text");
++
++                    b.Property<int>("Status")
++                        .HasColumnType("integer");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("AddresseeId");
++
++                    b.HasIndex("RequesterId", "AddresseeId")
++                        .IsUnique();
++
++                    b.ToTable("Friendships");
++                });
++
++            modelBuilder.Entity("RecipeSite.Models.Recipe", b =>
++                {
++                    b.Property<int>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("integer");
++
++                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
++
++                    b.Property<string>("Category")
++                        .IsRequired()
++                        .HasColumnType("text");
++
++                    b.Property<DateTime>("CreatedAt")
++                        .HasColumnType("timestamp without time zone");
++
++                    b.Property<string>("Difficulty")
++                        .HasColumnType("text");
++
++                    b.Property<string>("ImageUrl")
++                        .HasColumnType("text");
++
++                    b.Property<string>("SourceUrl")
++                        .HasColumnType("text");
++
++                    b.Property<string>("Title")
++                        .IsRequired()
++                        .HasMaxLength(100)
++                        .HasColumnType("character varying(100)");
++
++                    b.Property<string>("UserId")
++                        .HasColumnType("text");
++
++                    b.HasKey("Id");
++
++                    b.ToTable("Recipes");
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
++                {
++                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
++                        .WithMany()
++                        .HasForeignKey("RoleId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
++                {
++                    b.HasOne("RecipeSite.Models.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
++                {
++                    b.HasOne("RecipeSite.Models.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
++                {
++                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
++                        .WithMany()
++                        .HasForeignKey("RoleId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++
++                    b.HasOne("RecipeSite.Models.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
++                {
++                    b.HasOne("RecipeSite.Models.ApplicationUser", null)
++                        .WithMany()
++                        .HasForeignKey("UserId")
++                        .OnDelete(DeleteBehavior.Cascade)
++                        .IsRequired();
++                });
++
++            modelBuilder.Entity("RecipeSite.Models.Friendship", b =>
++                {
++                    b.HasOne("RecipeSite.Models.ApplicationUser", "Addressee")
++                        .WithMany()
++                        .HasForeignKey("AddresseeId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("RecipeSite.Models.ApplicationUser", "Requester")
++                        .WithMany()
++                        .HasForeignKey("RequesterId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Addressee");
++
++                    b.Navigation("Requester");
++                });
++#pragma warning restore 612, 618
++        }
++    }
++}
+diff --git a/Data/Migrations/20260919120000_AddFriendships.cs b/Data/Migrations/20260919120000_AddFriendships.cs
+new file mode 100644
+index 0000000..68b9c05
+--- /dev/null
++++ b/Data/Migrations/20260919120000_AddFriendships.cs
+@@ -0,0 +1,62 @@
++﻿using System;
++using Microsoft.EntityFrameworkCore.Migrations;
++using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
++
++#nullable disable
++
++namespace RecipeSite.Data.Migrations
++{
++    /// <inheritdoc />
++    public partial class AddFriendships : Migration
++    {
++        /// <inheritdoc />
++        protected override void Up(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.CreateTable(
++                name: "Friendships",
++                columns: table => new
++                {
++                    Id = table.Column<int>(type: "integer", nullable: false)
++                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
++                    RequesterId = table.Column<string>(type: "text", nullable: false),
++                    AddresseeId = table.Column<string>(type: "text", nullable: false),
++                    Status = table.Column<int>(type: "integer", nullable: false),
++                    CreatedAt = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
++                },
++                constraints: table =>
++                {
++                    table.PrimaryKey("PK_Friendships", x => x.Id);
++                    table.ForeignKey(
++                        name: "FK_Friendships_AspNetUsers_AddresseeId",
++                        column: x => x.AddresseeId,
++                        principalTable: "AspNetUsers",
++                        principalColumn: "Id",
++                        onDelete: ReferentialAction.Restrict);
++                    table.ForeignKey(
++                        name: "FK_Friendships_AspNetUsers_RequesterId",
++                        column: x => x.RequesterId,
++                        principalTable: "AspNetUsers",
++                        principalColumn: "Id",
++                        onDelete: ReferentialAction.Restrict);
++                });
++
++            migrationBuilder.CreateIndex(
++                name: "IX_Friendships_AddresseeId",
++                table: "Friendships",
++                column: "AddresseeId");
++
++            migrationBuilder.CreateIndex(
++                name: "IX_Friendships_RequesterId_AddresseeId",
++                table: "Friendships",
++                columns: new[] { "RequesterId", "AddresseeId" },
++                unique: true);
++        }
++
++        /// <inheritdoc />
++        protected override void Down(MigrationBuilder migrationBuilder)
++        {
++            migrationBuilder.DropTable(
++                name: "Friendships");
++        }
++    }
++}
+diff --git a/Data/Migrations/ApplicationDbContextModelSnapshot.cs b/Data/Migrations/ApplicationDbContextModelSnapshot.cs
+index 0185e1b..92a293e 100644
+--- a/Data/Migrations/ApplicationDbContextModelSnapshot.cs
++++ b/Data/Migrations/ApplicationDbContextModelSnapshot.cs
+@@ -253,6 +253,38 @@ namespace RecipeSite.Data.Migrations
+                     b.ToTable("AspNetUsers", (string)null);
+                 });
+ 
++            modelBuilder.Entity("RecipeSite.Models.Friendship", b =>
++                {
++                    b.Property<int>("Id")
++                        .ValueGeneratedOnAdd()
++                        .HasColumnType("integer");
++
++                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
++
++                    b.Property<string>("AddresseeId")
++                        .IsRequired()
++                        .HasColumnType("text");
++
++                    b.Property<DateTime>("CreatedAt")
++                        .HasColumnType("timestamp without time zone");
++
++                    b.Property<string>("RequesterId")
++                        .IsRequired()
++                        .HasColumnType("text");
++
++                    b.Property<int>("Status")
++                        .HasColumnType("integer");
++
++                    b.HasKey("Id");
++
++                    b.HasIndex("AddresseeId");
++
++                    b.HasIndex("RequesterId", "AddresseeId")
++                        .IsUnique();
++
++                    b.ToTable("Friendships");
++                });
++
+             modelBuilder.Entity("RecipeSite.Models.Recipe", b =>
+                 {
+                     b.Property<int>("Id")
+@@ -340,6 +372,25 @@ namespace RecipeSite.Data.Migrations
+                         .OnDelete(DeleteBehavior.Cascade)
+                         .IsRequired();
+                 });
++
++            modelBuilder.Entity("RecipeSite.Models.Friendship", b =>
++                {
++                    b.HasOne("RecipeSite.Models.ApplicationUser", "Addressee")
++                        .WithMany()
++                        .HasForeignKey("AddresseeId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.HasOne("RecipeSite.Models.ApplicationUser", "Requester")
++                        .WithMany()
++                        .HasForeignKey("RequesterId")
++                        .OnDelete(DeleteBehavior.Restrict)
++                        .IsRequired();
++
++                    b.Navigation("Addressee");
++
++                    b.Navigation("Requester");
++                });
+ #pragma warning restore 612, 618
+         }
+     }
+diff --git a/Models/Friendship.cs b/Models/Friendship.cs
+new file mode 100644
+index 0000000..427d68c
+--- /dev/null
++++ b/Models/Friendship.cs
+@@ -0,0 +1,30 @@
++using System.ComponentModel.DataAnnotations;
++
++namespace RecipeSite.Models
++{
++    public enum FriendshipStatus
++    {
++        Pending = 0,
++        Accepted = 1
++    }
++
++    // Связь дружбы между двумя пользователями.
++    // RequesterId — кто отправил запрос, AddresseeId — кому отправлен запрос.
++    public class Friendship
++    {
++        public int Id { get; set; }
++
++        [Required]
++        public string RequesterId { get; set; } = string.Empty;
++
++        [Required]
++        public string AddresseeId { get; set; } = string.Empty;
++
++        public FriendshipStatus Status { get; set; } = FriendshipStatus.Pending;
++
++        public DateTime CreatedAt { get; set; } = DateTime.Now;
++
++        public ApplicationUser? Requester { get; set; }
++        public ApplicationUser? Addressee { get; set; }
++    }
++}
+diff --git a/Models/SimpleRecipe.cs b/Models/SimpleRecipe.cs
+new file mode 100644
+index 0000000..daa96ff
+--- /dev/null
++++ b/Models/SimpleRecipe.cs
+@@ -0,0 +1,14 @@
++namespace RecipeSite.Models
++{
++    // Локальный рецепт из "Книги лёгких рецептов" (категория "Простые домашние")
++    public class SimpleRecipe
++    {
++        public string Id { get; set; } = "";               // напр. "local_1"
++        public string Title { get; set; } = "";
++        public string SubCategory { get; set; } = "";       // Завтраки / Обеды / Ужины / Закуски
++        public string? TimeEstimate { get; set; }           // напр. "10 мин"
++        public string Ingredients { get; set; } = "";        // одной строкой, через запятую
++        public string Steps { get; set; } = "";              // текст приготовления
++        public string? ImageUrl { get; set; }
++    }
++}
+diff --git a/Program.cs b/Program.cs
+index e0512f3..5b986cb 100644
+--- a/Program.cs
++++ b/Program.cs
+@@ -78,6 +78,7 @@ builder.Services.AddHttpClient<RecipeSite.Services.MealDbService>();
+ builder.Services.AddHttpClient<RecipeSite.Services.SpoonacularService>();
+ builder.Services.AddHttpClient<RecipeSite.Services.EdamamService>();
+ builder.Services.AddHttpClient<RecipeSite.Services.FactsService>();
++builder.Services.AddSingleton<RecipeSite.Services.SimpleRecipeService>();
+ builder.Services.AddLocalization();
+ 
+ builder.Services.Configure<RequestLocalizationOptions>(options =>
+diff --git a/Services/SimpleRecipeService.cs b/Services/SimpleRecipeService.cs
+new file mode 100644
+index 0000000..b48f5e2
+--- /dev/null
++++ b/Services/SimpleRecipeService.cs
+@@ -0,0 +1,46 @@
++using System.Text.Json;
++using System.Text.Json.Serialization;
++using RecipeSite.Models;
++
++namespace RecipeSite.Services
++{
++    // Читает локальные рецепты "Книги лёгких рецептов" из wwwroot/data/simple-recipes.json
++    public class SimpleRecipeService
++    {
++        private readonly List<SimpleRecipe> _recipes;
++
++        public SimpleRecipeService(IWebHostEnvironment env)
++        {
++            var path = Path.Combine(env.WebRootPath ?? "wwwroot", "data", "simple-recipes.json");
++            if (File.Exists(path))
++            {
++                var json = File.ReadAllText(path);
++                var options = new JsonSerializerOptions
++                {
++                    PropertyNameCaseInsensitive = true
++                };
++                _recipes = JsonSerializer.Deserialize<List<SimpleRecipe>>(json, options) ?? new List<SimpleRecipe>();
++            }
++            else
++            {
++                _recipes = new List<SimpleRecipe>();
++            }
++        }
++
++        public List<SimpleRecipe> GetAll() => _recipes;
++
++        public SimpleRecipe? GetById(string id) => _recipes.FirstOrDefault(r => r.Id == id);
++
++        public List<CatalogRecipe> ToCatalogRecipes()
++        {
++            return _recipes.Select(r => new CatalogRecipe
++            {
++                Id = r.Id,
++                Source = "local",
++                Title = r.Title,
++                ImageUrl = r.ImageUrl,
++                Category = "Простые домашние"
++            }).ToList();
++        }
++    }
++}
+diff --git a/Views/Friends/Index.cshtml b/Views/Friends/Index.cshtml
+new file mode 100644
+index 0000000..40db2fc
+--- /dev/null
++++ b/Views/Friends/Index.cshtml
+@@ -0,0 +1,102 @@
++@model List<RecipeSite.Models.ApplicationUser?>
++@{
++    ViewData["Title"] = "Мои друзья";
++    var incoming = ViewBag.IncomingRequests as List<RecipeSite.Models.Friendship> ?? new List<RecipeSite.Models.Friendship>();
++    var outgoing = ViewBag.OutgoingRequests as List<RecipeSite.Models.Friendship> ?? new List<RecipeSite.Models.Friendship>();
++}
++
++<div class="container mt-4 mb-5">
++    <div class="card shadow border-0 rounded-4 p-4 p-md-5 bg-white">
++        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
++            <h3 class="fw-bold text-dark mb-0">Мои друзья 👥</h3>
++            <a asp-controller="Friends" asp-action="Search" class="btn text-white fw-bold rounded-3 px-4" style="background-color:#ff6b8b;border:none;">🔍 Найти друзей</a>
++        </div>
++
++        @if (incoming.Any())
++        {
++            <h6 class="fw-bold text-dark mb-3">Входящие заявки</h6>
++            <div class="row g-3 mb-4">
++                @foreach (var req in incoming)
++                {
++                    var user = req.Requester;
++                    <div class="col-md-6">
++                        <div class="d-flex align-items-center justify-content-between p-3 rounded-4 border bg-light">
++                            <a asp-controller="Friends" asp-action="Profile" asp-route-userId="@user!.Id" class="d-flex align-items-center text-decoration-none text-dark">
++                                @if (!string.IsNullOrEmpty(user.AvatarUrl))
++                                {
++                                    <img src="@user.AvatarUrl" style="width:40px;height:40px;border-radius:50%;object-fit:cover;margin-right:10px;" />
++                                }
++                                else
++                                {
++                                    <span style="font-size:28px;margin-right:10px;">@(string.IsNullOrEmpty(user.AvatarPreset) ? "👤" : user.AvatarPreset)</span>
++                                }
++                                <span class="fw-bold">@user.UserName</span>
++                            </a>
++                            <div class="d-flex gap-2">
++                                <form asp-controller="Friends" asp-action="AcceptRequest" method="post">
++                                    <input type="hidden" name="id" value="@req.Id" />
++                                    <button type="submit" class="btn btn-sm btn-success rounded-3 fw-bold">Принять</button>
++                                </form>
++                                <form asp-controller="Friends" asp-action="DeclineRequest" method="post">
++                                    <input type="hidden" name="id" value="@req.Id" />
++                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-3">Отклонить</button>
++                                </form>
++                            </div>
++                        </div>
++                    </div>
++                }
++            </div>
++        }
++
++        @if (outgoing.Any())
++        {
++            <h6 class="fw-bold text-dark mb-3">Отправленные заявки</h6>
++            <div class="row g-3 mb-4">
++                @foreach (var req in outgoing)
++                {
++                    var user = req.Addressee;
++                    <div class="col-md-6">
++                        <div class="d-flex align-items-center justify-content-between p-3 rounded-4 border bg-light">
++                            <span class="fw-bold">@user!.UserName</span>
++                            <form asp-controller="Friends" asp-action="DeclineRequest" method="post">
++                                <input type="hidden" name="id" value="@req.Id" />
++                                <button type="submit" class="btn btn-sm btn-outline-secondary rounded-3">Отменить</button>
++                            </form>
++                        </div>
++                    </div>
++                }
++            </div>
++        }
++
++        <h6 class="fw-bold text-dark mb-3">Друзья</h6>
++        @if (!Model.Any())
++        {
++            <p class="text-muted text-center py-4">Пока нет друзей. Найди их по нику 👆</p>
++        }
++        <div class="row g-3">
++            @foreach (var user in Model)
++            {
++                if (user == null) { continue; }
++                <div class="col-md-6">
++                    <div class="d-flex align-items-center justify-content-between p-3 rounded-4 border bg-light">
++                        <a asp-controller="Friends" asp-action="Profile" asp-route-userId="@user.Id" class="d-flex align-items-center text-decoration-none text-dark">
++                            @if (!string.IsNullOrEmpty(user.AvatarUrl))
++                            {
++                                <img src="@user.AvatarUrl" style="width:44px;height:44px;border-radius:50%;object-fit:cover;margin-right:12px;" />
++                            }
++                            else
++                            {
++                                <span style="font-size:32px;margin-right:12px;">@(string.IsNullOrEmpty(user.AvatarPreset) ? "👤" : user.AvatarPreset)</span>
++                            }
++                            <span class="fw-bold">@user.UserName</span>
++                        </a>
++                        <form asp-controller="Friends" asp-action="RemoveFriend" method="post" onsubmit="return confirm('Удалить из друзей?');">
++                            <input type="hidden" name="userId" value="@user.Id" />
++                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-3">Удалить</button>
++                        </form>
++                    </div>
++                </div>
++            }
++        </div>
++    </div>
++</div>
+diff --git a/Views/Friends/Profile.cshtml b/Views/Friends/Profile.cshtml
+new file mode 100644
+index 0000000..875ed61
+--- /dev/null
++++ b/Views/Friends/Profile.cshtml
+@@ -0,0 +1,80 @@
++@model List<RecipeSite.Models.Recipe>
++@{
++    var profileUser = ViewBag.ProfileUser as RecipeSite.Models.ApplicationUser;
++    var areFriends = ViewBag.AreFriends as bool? ?? false;
++    ViewData["Title"] = profileUser?.UserName ?? "Профиль";
++
++    var categoryIcons = new Dictionary<string, string>
++    {
++        { "Завтраки", "🥞" },
++        { "Супы", "🍲" },
++        { "Вторые", "🍛" },
++        { "Сладкое", "🍰" },
++        { "Закуски", "🥟" },
++        { "Салаты", "🥗" }
++    };
++}
++
++<div class="container mt-4 mb-5">
++    <a asp-controller="Friends" asp-action="Index" class="btn btn-outline-secondary mb-3 rounded-3 px-3 py-2 border-0 bg-white shadow-sm text-dark fw-bold">
++        ← Назад к друзьям
++    </a>
++
++    <div class="card shadow border-0 rounded-4 p-4 p-md-5 bg-white">
++        <div class="d-flex align-items-center gap-3 mb-4">
++            @if (!string.IsNullOrEmpty(profileUser?.AvatarUrl))
++            {
++                <img src="@profileUser.AvatarUrl" style="width:64px;height:64px;border-radius:50%;object-fit:cover;" />
++            }
++            else
++            {
++                <span style="font-size:48px;">@(string.IsNullOrEmpty(profileUser?.AvatarPreset) ? "👤" : profileUser.AvatarPreset)</span>
++            }
++            <div>
++                <h3 class="fw-bold text-dark mb-0">@profileUser?.UserName</h3>
++                @if (!string.IsNullOrEmpty(profileUser?.FirstName))
++                {
++                    <div class="text-muted">@profileUser.FirstName @profileUser.LastName</div>
++                }
++            </div>
++        </div>
++
++        @if (!areFriends)
++        {
++            <div class="text-center py-5">
++                <div class="fs-1 mb-2">🔒</div>
++                <p class="text-muted fs-5 mb-0">Рецепты этого пользователя видны только друзьям</p>
++                <p class="text-muted small">Добавьте его в друзья, чтобы посмотреть, что он готовит</p>
++            </div>
++        }
++        else
++        {
++            <h5 class="fw-bold text-dark mb-3">Рецепты @(profileUser?.UserName) 📖</h5>
++            @if (!Model.Any())
++            {
++                <p class="text-muted text-center py-4">Пока нет добавленных рецептов</p>
++            }
++            <div class="row g-4">
++                @foreach (var recipe in Model)
++                {
++                    var icon = categoryIcons.TryGetValue(recipe.Category, out var emoji) ? emoji : "🍽️";
++                    <div class="col-md-4">
++                        <div class="card h-100 border shadow-sm rounded-4 overflow-hidden bg-white">
++                            <div class="d-flex align-items-center justify-content-center bg-light text-muted fs-1" style="height: 140px;">
++                                @icon
++                            </div>
++                            <div class="card-body p-3">
++                                <span class="badge rounded-pill bg-light text-danger border px-2 py-1 mb-2 small">@recipe.Category</span>
++                                <h6 class="card-title fw-bold text-dark mb-2">@recipe.Title</h6>
++                                @if (!string.IsNullOrEmpty(recipe.SourceUrl))
++                                {
++                                    <a href="@recipe.SourceUrl" target="_blank" class="d-block text-decoration-none small" style="color: #ff6b8b;">🔗 Открыть источник (TikTok/Instagram)</a>
++                                }
++                            </div>
++                        </div>
++                    </div>
++                }
++            </div>
++        }
++    </div>
++</div>
+diff --git a/Views/Friends/Search.cshtml b/Views/Friends/Search.cshtml
+new file mode 100644
+index 0000000..43b8e42
+--- /dev/null
++++ b/Views/Friends/Search.cshtml
+@@ -0,0 +1,76 @@
++@model List<RecipeSite.Models.ApplicationUser>
++@{
++    ViewData["Title"] = "Поиск друзей";
++    var query = ViewBag.Query as string;
++    var statusByUserId = ViewBag.StatusByUserId as Dictionary<string, string> ?? new Dictionary<string, string>();
++}
++
++<div class="container mt-4 mb-5">
++    <div class="card shadow border-0 rounded-4 p-4 p-md-5 bg-white">
++        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
++            <h3 class="fw-bold text-dark mb-0">Поиск друзей 🔍</h3>
++            <a asp-controller="Friends" asp-action="Index" class="btn btn-outline-secondary rounded-3 fw-bold">Мои друзья</a>
++        </div>
++
++        <form asp-controller="Friends" asp-action="Search" method="get" class="mb-4">
++            <div class="input-group">
++                <input type="text" name="query" class="form-control rounded-start-3 py-2" placeholder="Введите ник пользователя..." value="@query" />
++                <button type="submit" class="btn text-white fw-bold px-4 rounded-end-3" style="background-color:#ff6b8b;border:none;">Найти</button>
++            </div>
++        </form>
++
++        @if (!string.IsNullOrWhiteSpace(query) && !Model.Any())
++        {
++            <p class="text-muted text-center py-4">Никого не найдено по запросу «@query» 🤷</p>
++        }
++
++        <div class="row g-3">
++            @foreach (var user in Model)
++            {
++                var status = statusByUserId.TryGetValue(user.Id, out var s) ? s : "none";
++                <div class="col-md-6">
++                    <div class="d-flex align-items-center justify-content-between p-3 rounded-4 border bg-light">
++                        <a asp-controller="Friends" asp-action="Profile" asp-route-userId="@user.Id" class="d-flex align-items-center text-decoration-none text-dark">
++                            @if (!string.IsNullOrEmpty(user.AvatarUrl))
++                            {
++                                <img src="@user.AvatarUrl" alt="@user.UserName" style="width:44px;height:44px;border-radius:50%;object-fit:cover;margin-right:12px;" />
++                            }
++                            else
++                            {
++                                <span style="font-size:32px;margin-right:12px;">@(string.IsNullOrEmpty(user.AvatarPreset) ? "👤" : user.AvatarPreset)</span>
++                            }
++                            <div>
++                                <div class="fw-bold">@user.UserName</div>
++                                @if (!string.IsNullOrEmpty(user.FirstName))
++                                {
++                                    <div class="text-muted small">@user.FirstName @user.LastName</div>
++                                }
++                            </div>
++                        </a>
++
++                        @if (status == "friends")
++                        {
++                            <span class="badge rounded-pill bg-success-subtle text-success px-3 py-2">Друзья ✓</span>
++                        }
++                        else if (status == "pending_out")
++                        {
++                            <span class="badge rounded-pill bg-secondary-subtle text-secondary px-3 py-2">Заявка отправлена</span>
++                        }
++                        else if (status == "pending_in")
++                        {
++                            <a asp-controller="Friends" asp-action="Index" class="badge rounded-pill bg-warning-subtle text-dark px-3 py-2 text-decoration-none">Ответить на заявку</a>
++                        }
++                        else
++                        {
++                            <form asp-controller="Friends" asp-action="SendRequest" method="post">
++                                <input type="hidden" name="userId" value="@user.Id" />
++                                <input type="hidden" name="returnQuery" value="@query" />
++                                <button type="submit" class="btn btn-sm text-white fw-bold rounded-3 px-3" style="background-color:#ff6b8b;border:none;">+ Добавить</button>
++                            </form>
++                        }
++                    </div>
++                </div>
++            }
++        </div>
++    </div>
++</div>
+diff --git a/Views/RecipeBook/Details_Local.cshtml b/Views/RecipeBook/Details_Local.cshtml
+new file mode 100644
+index 0000000..4dcba27
+--- /dev/null
++++ b/Views/RecipeBook/Details_Local.cshtml
+@@ -0,0 +1,56 @@
++@model RecipeSite.Models.SimpleRecipe
++@{
++    ViewData["Title"] = Model.Title;
++    var ingredientList = Model.Ingredients
++        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
++}
++
++<div class="container mt-4 mb-5">
++    <a asp-controller="RecipeBook" asp-action="Index" asp-route-category="Простые домашние" class="btn btn-outline-secondary mb-3 rounded-3 px-3 py-2 border-0 bg-white shadow-sm text-dark fw-bold">
++        ← Назад к каталогу
++    </a>
++
++    <div class="card shadow border-0 rounded-4 p-4 p-md-5 bg-white">
++        <div class="row g-4 align-items-center">
++            <div class="col-lg-5">
++                @if (!string.IsNullOrEmpty(Model.ImageUrl))
++                {
++                    <img src="@Model.ImageUrl" alt="@Model.Title" class="img-fluid rounded-4 shadow-sm w-100" style="object-fit: cover; max-height: 350px;" />
++                }
++                else
++                {
++                    <div class="d-flex align-items-center justify-content-center bg-light rounded-4 text-muted fs-1 shadow-sm" style="height: 250px;">🏠</div>
++                }
++            </div>
++
++            <div class="col-lg-7">
++                <h2 class="fw-bold mb-3 text-dark">@Model.Title</h2>
++
++                <div class="d-flex flex-wrap gap-2 mb-4">
++                    <span class="badge rounded-pill bg-light text-secondary border px-3 py-2">📂 @Model.SubCategory</span>
++                    @if (!string.IsNullOrEmpty(Model.TimeEstimate))
++                    {
++                        <span class="badge rounded-pill bg-light text-dark border px-3 py-2">⏱ @Model.TimeEstimate</span>
++                    }
++                </div>
++
++                <h5 class="fw-bold text-dark mb-3">Ингредиенты</h5>
++                <ul class="list-group list-group-flush mb-4 border rounded-3 overflow-hidden" style="max-height: 250px; overflow-y: auto;">
++                    @foreach (var ingredient in ingredientList)
++                    {
++                        <li class="list-group-item bg-transparent px-3 py-2 text-secondary border-bottom">
++                            @ingredient
++                        </li>
++                    }
++                </ul>
++            </div>
++        </div>
++
++        <hr class="my-4 text-muted opacity-25" />
++
++        <h5 class="fw-bold text-dark mb-3">Способ приготовления</h5>
++        <div class="p-3 rounded-3 bg-light border-0">
++            <p class="text-secondary mb-0" style="white-space: pre-line; line-height: 1.6;">@Model.Steps</p>
++        </div>
++    </div>
++</div>
+diff --git a/Views/Shared/_Layout.cshtml b/Views/Shared/_Layout.cshtml
+index af03605..f332924 100644
+--- a/Views/Shared/_Layout.cshtml
++++ b/Views/Shared/_Layout.cshtml
+@@ -83,6 +83,9 @@
+                         <li class="nav-item">
+                             <a class="nav-link text-dark" asp-controller="Wheel" asp-action="Index">Что приготовить?</a>
+                         </li>
++                        <li class="nav-item">
++                            <a class="nav-link text-dark" asp-controller="Friends" asp-action="Index">Друзья</a>
++                        </li>
+                         <li class="nav-item">
+                             <a class="nav-link text-dark" asp-area="" asp-controller="Home"
+                                asp-action="Privacy">Конфиденциальность</a>
+diff --git a/wwwroot/data/simple-recipes.json b/wwwroot/data/simple-recipes.json
+new file mode 100644
+index 0000000..60c58ad
+--- /dev/null
++++ b/wwwroot/data/simple-recipes.json
+@@ -0,0 +1,85 @@
++[
++  {"id":"local_1","title":"Омлет классический","subCategory":"Завтраки","timeEstimate":"10 мин","ingredients":"Яйца 3 шт, молоко 50 мл, соль, сливочное масло.","steps":"Взбить яйца с молоком и солью. Вылить на разогретую сковороду со сливочным маслом. Готовить под крышкой на слабом огне 5-7 минут.","imageUrl":null},
++  {"id":"local_2","title":"Глазунья с беконом","subCategory":"Завтраки","timeEstimate":"7 мин","ingredients":"Яйца 2 шт, бекон 3 полоски, соль, перец.","steps":"Обжарить бекон на сухой сковороде до хруста. Разбить яйца поверх бекона, посолить. Жарить до готовности белка.","imageUrl":null},
++  {"id":"local_3","title":"Овсянка на молоке","subCategory":"Завтраки","timeEstimate":"10 мин","ingredients":"Овсяные хлопья 0.5 стакана, молоко 1 стакан, сахар 1 ч.л., сливочное масло.","steps":"В кипящее молоко всыпать овсянку и сахар. Варить помешивая 5-7 минут. Добавить масло.","imageUrl":null},
++  {"id":"local_4","title":"Сырники из творога","subCategory":"Завтраки","timeEstimate":"20 мин","ingredients":"Творог 400г, яйцо 1 шт, мука 3 ст.л., сахар 2 ст.л., ванилин.","steps":"Смешать творог, яйцо, сахар и муку. Сформировать шайбочки, обвалять в муке. Жарить с двух сторон до румяной корочки.","imageUrl":null},
++  {"id":"local_5","title":"Блины классические","subCategory":"Завтраки","timeEstimate":"30 мин","ingredients":"Молоко 500 мл, яйца 2 шт, мука 200г, сахар 2 ст.л., масло раст. 2 ст.л.","steps":"Взбить яйца с сахаром, добавить часть молока, муку. Перемешать до исчезновения комочков, влить остальное молоко и масло. Выпекать на сковороде.","imageUrl":null},
++  {"id":"local_6","title":"Тост с авокадо","subCategory":"Завтраки","timeEstimate":"5 мин","ingredients":"Хлеб 2 ломтика, авокадо 1 шт, лимонный сок, соль, оливковое масло.","steps":"Хлеб подсушить в тостере. Авокадо размять вилкой, добавить сок лимона и соль. Намазать на хлеб.","imageUrl":null},
++  {"id":"local_7","title":"Ленивые вареники","subCategory":"Завтраки","timeEstimate":"15 мин","ingredients":"Творог 200г, яйцо 1 шт, мука 3-4 ст.л., сахар 1 ст.л.","steps":"Замесить тесто из всех ингредиентов. Скатать колбаску, нарезать на кусочки. Варить в кипящей подсоленной воде 3 минуты после всплытия.","imageUrl":null},
++  {"id":"local_8","title":"Шакшука","subCategory":"Завтраки","timeEstimate":"15 мин","ingredients":"Яйца 3 шт, помидоры 2 шт, лук 0.5 шт, болгарский перец 0.5 шт, чеснок, зира.","steps":"Обжарить лук, перец и чеснок. Добавить нарезанные помидоры, тушить 5 минут. Сделать углубления, разбить в них яйца. Готовить до схватывания белка.","imageUrl":"https://commons.wikimedia.org/wiki/Special:FilePath/Shakshuka_011.jpg"},
++  {"id":"local_9","title":"Рисовая каша","subCategory":"Завтраки","timeEstimate":"25 мин","ingredients":"Рис круглый 0.5 стакана, молоко 1.5 стакана, вода 0.5 стакана, сахар, масло.","steps":"Промыть рис, залить водой и варить до впитывания. Влить горячее молоко, добавить сахар, варить 15 мин на слабом огне.","imageUrl":null},
++  {"id":"local_10","title":"Гренки сладкие","subCategory":"Завтраки","timeEstimate":"10 мин","ingredients":"Батон 4 ломтика, яйцо 1 шт, молоко 50 мл, сахар 1 ч.л.","steps":"Взбить яйцо с молоком и сахаром. Обмакнуть ломтики батона с двух сторон, обжарить на сливочном масле до корочки.","imageUrl":null},
++  {"id":"local_11","title":"Панкейки","subCategory":"Завтраки","timeEstimate":"20 мин","ingredients":"Молоко 1 стакан, мука 1 стакан, яйцо 1 шт, сахар 2 ст.л., разрыхлитель 1 ч.л.","steps":"Смешать сухие и жидкие ингредиенты отдельно, затем соединить. Жарить на сухой антипригарной сковороде с двух сторон.","imageUrl":null},
++  {"id":"local_12","title":"Творожная запеканка","subCategory":"Завтраки","timeEstimate":"45 мин","ingredients":"Творог 500г, яйца 3 шт, манка 3 ст.л., сахар 3 ст.л., сметана 2 ст.л.","steps":"Смешать все ингредиенты миксером. Выложить в смазанную форму, запекать при 180°C около 35-40 минут.","imageUrl":null},
++  {"id":"local_13","title":"Яйцо пашот на тосте","subCategory":"Завтраки","timeEstimate":"10 мин","ingredients":"Яйцо 1 шт, хлеб 1 ломтик, уксус 1 ст.л., сливочный сыр.","steps":"В кипящую воду добавить уксус, сделать воронку, аккуратно влить яйцо. Варить 3 минуты. Выложить на тост с сыром.","imageUrl":null},
++  {"id":"local_14","title":"Горячие бутерброды","subCategory":"Завтраки","timeEstimate":"10 мин","ingredients":"Хлеб 2 ломтика, сыр 50г, колбаса 50г, помидор.","steps":"На хлеб положить колбасу, кружок помидора, сверху посыпать тертым сыром. Запечь в микроволновке или духовке до расплавления сыра.","imageUrl":null},
++  {"id":"local_15","title":"Мюсли с йогуртом","subCategory":"Завтраки","timeEstimate":"3 мин","ingredients":"Мюсли 4 ст.л., натуральный йогурт 150 мл, ягоды или банан.","steps":"Насыпать мюсли в миску, залить йогуртом, сверху украсить нарезанными фруктами или ягодами. Дать постоять 2 минуты.","imageUrl":null},
++  {"id":"local_16","title":"Фриттата с овощами","subCategory":"Завтраки","timeEstimate":"20 мин","ingredients":"Яйца 4 шт, замороженные овощи 150г, сыр 30г, молоко 30 мл.","steps":"Овощи слегка обжарить на сковороде (которую можно ставить в духовку). Залить взбитыми яйцами с молоком. Посыпать сыром, запечь при 180°C 10 минут.","imageUrl":null},
++  {"id":"local_17","title":"Пшенная каша с тыквой","subCategory":"Завтраки","timeEstimate":"30 мин","ingredients":"Пшено 0.5 стакана, тыква 150г, молоко 1 стакан, вода 1 стакан, сахар.","steps":"Пшено ошпарить кипятком. Тыкву нарезать кубиками. Варить всё вместе в воде и молоке до мягкости тыквы и готовности крупы.","imageUrl":null},
++  {"id":"local_18","title":"Бельгийские вафли","subCategory":"Завтраки","timeEstimate":"25 мин","ingredients":"Мука 200г, молоко 200 мл, яйца 2 шт, масло сливочное 100г, сахар 3 ст.л., разрыхлитель.","steps":"Масло растопить. Смешать все ингредиенты до однородности. Выпекать в вафельнице до золотистого цвета.","imageUrl":null},
++  {"id":"local_19","title":"Яблочные оладьи","subCategory":"Завтраки","timeEstimate":"20 мин","ingredients":"Кефир 1 стакан, мука 1 стакан, яйцо 1 шт, яблоко 1 шт, сахар 2 ст.л., сода 0.5 ч.л.","steps":"Вмешать яйцо, кефир, сахар, соду и муку. Яблоко натереть на терке и добавить в тесто. Жарить как обычные оладьи.","imageUrl":null},
++  {"id":"local_20","title":"Ролл с омлетом","subCategory":"Завтраки","timeEstimate":"10 мин","ingredients":"Лаваш 1 лист, яйца 2 шт, сыр 30г, зелень.","steps":"Приготовить тонкий омлет. Положить его на лаваш, посыпать сыром и зеленью, свернуть в рулет. Слегка прогреть на сковороде.","imageUrl":null},
++
++  {"id":"local_21","title":"Борщ классический","subCategory":"Обеды","timeEstimate":"1.5 часа","ingredients":"Говядина на кости 500г, свекла 1 шт, капуста 200г, картофель 3 шт, морковь, лук, томатная паста.","steps":"Сварить бульон. Сделать зажарку из лука, моркови, свеклы и томатной пасты. В бульон добавить картофель, через 10 мин - капусту и зажарку. Варить до готовности.","imageUrl":"https://commons.wikimedia.org/wiki/Special:FilePath/Borscht_with_bread.jpg"},
++  {"id":"local_22","title":"Куриный суп-лапша","subCategory":"Обеды","timeEstimate":"45 мин","ingredients":"Куриное филе 300г, лапша 50г, картофель 2 шт, морковь, лук.","steps":"Сварить куриный бульон. Добавить нарезанный картофель, пассерованные лук и морковь. За 5 минут до готовности добавить лапшу и зелень.","imageUrl":null},
++  {"id":"local_23","title":"Солянка мясная","subCategory":"Обеды","timeEstimate":"1 час","ingredients":"Говядина 300г, колбаса/сосиски 200г, соленые огурцы 3 шт, маслины, томатная паста, лимон.","steps":"Сварить бульон. Обжарить лук, огурцы и томатную пасту. В бульон добавить нарезанные мясные деликатесы, зажарку. Варить 15 мин. Подавать с маслинами и лимоном.","imageUrl":null},
++  {"id":"local_24","title":"Гороховый суп с копченостями","subCategory":"Обеды","timeEstimate":"1.5 часа","ingredients":"Горох колотый 1 стакан, ребра копченые 300г, картофель 2 шт, морковь, лук.","steps":"Горох замочить заранее, сварить с ребрами до мягкости. Добавить картофель, обжаренный лук с морковью. Варить еще 15 минут.","imageUrl":null},
++  {"id":"local_25","title":"Крем-суп грибной","subCategory":"Обеды","timeEstimate":"30 мин","ingredients":"Шампиньоны 400г, картофель 2 шт, лук 1 шт, сливки 10-20% 150 мл.","steps":"Картофель отварить. Грибы и лук обжарить. Соединить всё в блендере, добавить немного бульона от картофеля и сливки, пюрировать. Прогреть.","imageUrl":null},
++  {"id":"local_26","title":"Макароны по-флотски","subCategory":"Обеды","timeEstimate":"25 мин","ingredients":"Макароны 200г, фарш мясной 300г, лук 1 шт, масло, соль, перец.","steps":"Макароны отварить. Фарш обжарить с мелко нарезанным луком до готовности. Смешать фарш с макаронами, прогреть вместе 2 минуты.","imageUrl":null},
++  {"id":"local_27","title":"Плов с курицей","subCategory":"Обеды","timeEstimate":"1 час","ingredients":"Рис длиннозерный 1.5 стакана, курица 400г, морковь 2 шт, лук 2 шт, чеснок, специи для плова.","steps":"В казане обжарить мясо, добавить лук и морковь соломкой, потушить (зирвак). Засыпать промытый рис, залить водой на 2 см выше риса. Варить до выпаривания, воткнуть чеснок.","imageUrl":"https://commons.wikimedia.org/wiki/Special:FilePath/Plov.jpg"},
++  {"id":"local_28","title":"Картофельное пюре с котлетой","subCategory":"Обеды","timeEstimate":"45 мин","ingredients":"Картофель 500г, молоко, масло. Для котлет: фарш 400г, лук, хлеб, яйцо.","steps":"Картошку сварить, размять с молоком и маслом. Из фарша, замоченного хлеба, лука и яйца слепить котлеты. Обжарить с двух сторон.","imageUrl":null},
++  {"id":"local_29","title":"Гречка с гуляшом","subCategory":"Обеды","timeEstimate":"1 час","ingredients":"Гречка 1 стакан, говядина/свинина 400г, лук, морковь, томатная паста, мука 1 ст.л.","steps":"Гречку отварить. Мясо нарезать кусочками, обжарить с луком и морковью, добавить муку и томатную пасту, залить водой и тушить 40 минут.","imageUrl":null},
++  {"id":"local_30","title":"Паста Карбонара","subCategory":"Обеды","timeEstimate":"20 мин","ingredients":"Спагетти 200г, бекон 100г, желтки 2 шт, сыр пармезан 50г, сливки 50 мл.","steps":"Отварить спагетти. Обжарить бекон. Смешать желтки, сливки и тертый сыр. Горячую пасту кинуть к бекону, влить соус, быстро перемешать и снять с огня.","imageUrl":"https://commons.wikimedia.org/wiki/Special:FilePath/Spaghetti_carbonara.jpg"},
++  {"id":"local_31","title":"Пельмени в бульоне","subCategory":"Обеды","timeEstimate":"15 мин","ingredients":"Пельмени 250г, бульон или вода, лавровый лист, зелень, сметана.","steps":"Вскипятить воду или бульон с солью и лавровым листом. Закинуть пельмени, варить 5-7 минут после всплытия. Подавать с бульоном и сметаной.","imageUrl":null},
++  {"id":"local_32","title":"Рассольник","subCategory":"Обеды","timeEstimate":"1 час","ingredients":"Мясо для бульона 300г, перловка 3 ст.л., картофель 2 шт, соленые огурцы 2 шт, морковь, лук.","steps":"Сварить бульон с перловкой. Добавить картофель. Сделать зажарку из лука, моркови и тертых огурцов. Добавить в суп, варить 10 минут.","imageUrl":null},
++  {"id":"local_33","title":"Уха из красной рыбы","subCategory":"Обеды","timeEstimate":"40 мин","ingredients":"Суповой набор лосося/форели 400г, картофель 3 шт, морковь, лук, перец горошком.","steps":"Сварить бульон из рыбы (20 мин), процедить. Разобрать рыбу от костей. В бульон кинуть картофель, морковь, целую луковицу. Варить 15 мин, вернуть рыбу.","imageUrl":null},
++  {"id":"local_34","title":"Лагман","subCategory":"Обеды","timeEstimate":"1.5 часа","ingredients":"Говядина 300г, лапша для лагмана, редька 1 шт, перец болгарский 1 шт, картофель 2 шт, томатная паста.","steps":"Мясо и овощи нарезать кубиком. Обжарить мясо, добавить овощи и томатную пасту, залить водой, тушить до готовности (ваджа). Подавать на отварной лапше.","imageUrl":null},
++  {"id":"local_35","title":"Суп-пюре из тыквы","subCategory":"Обеды","timeEstimate":"40 мин","ingredients":"Тыква 400г, картофель 1 шт, лук 1 шт, сливки 100 мл, тыквенные семечки.","steps":"Овощи крупно нарезать, отварить в небольшом количестве воды до мягкости. Пюрировать блендером, влить сливки, прогреть. Посыпать семечками.","imageUrl":null},
++  {"id":"local_36","title":"Щи из свежей капусты","subCategory":"Обеды","timeEstimate":"1 час","ingredients":"Курица 300г, капуста 250г, картофель 2 шт, помидор 1 шт, морковь, лук.","steps":"В куриный бульон добавить нашинкованную капусту и картофель. Сделать зажарку из лука, моркови и помидора, добавить в суп. Варить до мягкости капусты.","imageUrl":null},
++  {"id":"local_37","title":"Спагетти Болоньезе","subCategory":"Обеды","timeEstimate":"40 мин","ingredients":"Спагетти 200г, фарш 300г, лук 1 шт, морковь 1 шт, томатный соус 200г, чеснок.","steps":"Обжарить лук и морковь, добавить фарш, жарить до готовности. Влить томатный соус и тушить 15 мин. Подавать соус поверх отварных спагетти.","imageUrl":null},
++  {"id":"local_38","title":"Рис с курицей карри","subCategory":"Обеды","timeEstimate":"30 мин","ingredients":"Рис 1 стакан, куриное филе 300г, сливки 100 мл, карри 1 ч.л., лук.","steps":"Рис отварить. Филе нарезать, обжарить с луком. Посыпать приправой карри, залить сливками и тушить 5-7 минут. Подавать с рисом.","imageUrl":null},
++  {"id":"local_39","title":"Окрошка на квасе/кефире","subCategory":"Обеды","timeEstimate":"20 мин","ingredients":"Колбаса вареная 200г, картофель отварной 2 шт, яйца вареные 3 шт, огурец 2 шт, редис, зелень, квас или кефир.","steps":"Все ингредиенты нарезать мелким кубиком, зелень порубить. Смешать, посолить, залить холодным квасом или кефиром с минералкой.","imageUrl":null},
++  {"id":"local_40","title":"Сырный суп с курицей","subCategory":"Обеды","timeEstimate":"35 мин","ingredients":"Куриное филе 200г, плавленый сырок 2 шт (по 90г), картофель 2 шт, морковь, лук.","steps":"Сварить филе, нарезать. В бульон кинуть картофель. Сделать зажарку. Когда картошка готова, добавить зажарку, мясо и натертые сырки. Мешать до растворения сыра.","imageUrl":null},
++
++  {"id":"local_41","title":"Куриные ножки в аэрогриле","subCategory":"Ужины","timeEstimate":"30 мин","ingredients":"Куриные голени 6 шт, паприка, чеснок сушеный, соль, ложка масла.","steps":"Голени натереть специями, солью и каплей масла. Выложить в чашу аэрогриля, запекать при 190°C около 20-25 минут до хрустящей корочки.","imageUrl":null},
++  {"id":"local_42","title":"Отбивные из свинины","subCategory":"Ужины","timeEstimate":"20 мин","ingredients":"Корейка свиная 400г, яйцо 1 шт, панировочные сухари, соль, перец.","steps":"Мясо нарезать на порции, отбить молотком. Посолить, поперчить. Обмакнуть во взбитое яйцо, затем в сухари. Жарить с двух сторон по 5-7 минут.","imageUrl":null},
++  {"id":"local_43","title":"Запеченная рыба","subCategory":"Ужины","timeEstimate":"30 мин","ingredients":"Филе белой рыбы (треска, минтай) 400г, лимон, сыр 50г, сметана 2 ст.л.","steps":"Рыбу выложить в форму, посолить, сбрызнуть лимоном. Смазать сметаной, посыпать тертым сыром. Запекать в духовке 20-25 минут при 180°C.","imageUrl":null},
++  {"id":"local_44","title":"Овощное рагу","subCategory":"Ужины","timeEstimate":"40 мин","ingredients":"Кабачок 1 шт, картофель 3 шт, перец болгарский 1 шт, помидоры 2 шт, лук, морковь.","steps":"Все овощи нарезать кубиками. Обжарить лук и морковь, добавить остальные овощи, немного воды и тушить под крышкой 25-30 минут до готовности картофеля.","imageUrl":null},
++  {"id":"local_45","title":"Жаркое в горшочках","subCategory":"Ужины","timeEstimate":"1 час","ingredients":"Свинина 300г, картофель 4 шт, грибы 150г, лук, сыр 50г, майонез/сметана.","steps":"Мясо, картошку и грибы нарезать. Выложить слоями в горшочки: мясо, лук, грибы, картошка. Сверху ложка сметаны и тертый сыр. Запекать при 200°C 45 минут.","imageUrl":null},
++  {"id":"local_46","title":"Куриные котлеты рубленые","subCategory":"Ужины","timeEstimate":"25 мин","ingredients":"Куриное филе 400г, яйцо 1 шт, майонез 2 ст.л., крахмал или мука 2 ст.л., чеснок.","steps":"Филе нарезать очень мелким кубиком. Смешать с яйцом, майонезом, мукой и солью. Выкладывать ложкой на сковороду как оладьи. Жарить с двух сторон.","imageUrl":null},
++  {"id":"local_47","title":"Стейк из говядины","subCategory":"Ужины","timeEstimate":"15 мин","ingredients":"Стейк говяжий (рибай или стриплойн) 1 шт, соль крупная, перец черный, сливочное масло, розмарин.","steps":"Мясо комнатной температуры обжарить на раскаленной сковороде по 2-3 минуты с каждой стороны. Добавить масло и розмарин, поливать стейк маслом. Дать отдохнуть 5 мин.","imageUrl":null},
++  {"id":"local_48","title":"Минтай в кляре","subCategory":"Ужины","timeEstimate":"25 мин","ingredients":"Филе минтая 400г, яйцо 1 шт, молоко 50 мл, мука 3 ст.л., соль.","steps":"Филе нарезать кусочками. Взбить яйцо с молоком и мукой до густоты сметаны. Кусочки рыбы обмакивать в кляр и жарить на масле до золотистости.","imageUrl":null},
++  {"id":"local_49","title":"Тефтели в томатном соусе","subCategory":"Ужины","timeEstimate":"40 мин","ingredients":"Фарш мясной 400г, рис (полуготовый) 0.5 стакана, лук, томатная паста 2 ст.л., сметана 1 ст.л.","steps":"Смешать фарш, рис, измельченный лук. Слепить шарики. Смешать томатную пасту, сметану и воду, залить тефтели в сковороде. Тушить 25 минут под крышкой.","imageUrl":null},
++  {"id":"local_50","title":"Ленивые голубцы","subCategory":"Ужины","timeEstimate":"45 мин","ingredients":"Фарш 400г, капуста 200г, рис 0.5 стакана, морковь, лук, томатная паста.","steps":"Капусту мелко нашинковать. Смешать с фаршем и сырым рисом, слепить крупные котлеты. Обжарить, залить соусом (зажарка из лука, моркови и томата + вода), тушить 30 мин.","imageUrl":null},
++  {"id":"local_51","title":"Картошка с розмарином","subCategory":"Ужины","timeEstimate":"40 мин","ingredients":"Картофель 500г, оливковое масло 3 ст.л., чеснок 2 зубчика, свежий розмарин, соль.","steps":"Картофель нарезать дольками (не чистя, если молодой). Смешать с маслом, солью, рубленым чесноком и розмарином. Запекать в духовке при 200°C 35 минут.","imageUrl":null},
++  {"id":"local_52","title":"Паста с морепродуктами","subCategory":"Ужины","timeEstimate":"20 мин","ingredients":"Макароны 200г, коктейль из морепродуктов 250г, сливки 150 мл, чеснок, сыр.","steps":"Отварить пасту. Морепродукты разморозить, быстро обжарить с чесноком (3 мин). Залить сливками, прогреть до загустения, смешать с пастой. Посыпать сыром.","imageUrl":null},
++  {"id":"local_53","title":"Мясо по-французски","subCategory":"Ужины","timeEstimate":"50 мин","ingredients":"Свинина (корейка) 400г, лук 1 шт, картофель 3 шт, помидор 1 шт, сыр 100г, майонез.","steps":"Мясо отбить, выложить на противень. Сверху слой лука, затем кружочки картофеля, кружочки помидора. Смазать майонезом, посыпать сыром. Запекать при 190°C 40 минут.","imageUrl":null},
++  {"id":"local_54","title":"Индейка с брокколи","subCategory":"Ужины","timeEstimate":"25 мин","ingredients":"Филе индейки 300г, брокколи 200г, соевый соус 3 ст.л., кунжут.","steps":"Индейку нарезать полосками, обжарить. Добавить разобранную на мелкие соцветия брокколи, влить соевый соус и немного воды. Тушить 7-10 минут. Посыпать кунжутом.","imageUrl":null},
++  {"id":"local_55","title":"Вок (гречневая лапша) с курицей","subCategory":"Ужины","timeEstimate":"20 мин","ingredients":"Лапша соба 150г, куриное филе 200г, перец болгарский 1 шт, морковь 1 шт, соус терияки.","steps":"Сварить собу. Курицу и овощи нарезать тонкой соломкой. Быстро обжарить на сильном огне курицу, добавить овощи (5 мин), влить терияки, добавить лапшу, перемешать.","imageUrl":null},
++  {"id":"local_56","title":"Жареная картошка с грибами","subCategory":"Ужины","timeEstimate":"30 мин","ingredients":"Картофель 500г, шампиньоны 200г, лук 1 шт, масло, соль.","steps":"Грибы нарезать и обжарить с луком до выпаривания жидкости, убрать со сковороды. Налить масло, обжарить картофель соломкой до корочки. Вернуть грибы, посолить, перемешать.","imageUrl":null},
++  {"id":"local_57","title":"Мясной рулет с яйцом","subCategory":"Ужины","timeEstimate":"1 час","ingredients":"Фарш 500г, яйца вареные 3 шт, сырое яйцо 1 шт, лук, хлеб.","steps":"В фарш добавить сырое яйцо, размоченный хлеб, лук. Выложить на фольгу прямоугольником. В центр положить вареные яйца, свернуть рулет. Запекать 45 минут при 180°C.","imageUrl":null},
++  {"id":"local_58","title":"Макаронная запеканка","subCategory":"Ужины","timeEstimate":"35 мин","ingredients":"Вчерашние макароны 300г, ветчина 150г, яйца 2 шт, молоко 100 мл, сыр 70г.","steps":"Ветчину нарезать кубиком, смешать с макаронами. Выложить в форму. Яйца взбить с молоком, залить макароны. Посыпать сыром. Запекать 20 минут.","imageUrl":null},
++  {"id":"local_59","title":"Лосось на гриле / сковороде","subCategory":"Ужины","timeEstimate":"15 мин","ingredients":"Стейк красной рыбы 2 шт, лимон, соль, черный перец, оливковое масло.","steps":"Стейки смазать маслом, посолить, поперчить. Жарить на сковороде-гриль или обычной по 4-5 минут с каждой стороны. Сбрызнуть лимоном.","imageUrl":null},
++  {"id":"local_60","title":"Тушеная капуста с сосисками","subCategory":"Ужины","timeEstimate":"30 мин","ingredients":"Капуста 400г, сосиски 3 шт, лук, морковь, томатная паста 2 ст.л.","steps":"Обжарить лук с морковью, добавить нарезанные кружочками сосиски. Закинуть нашинкованную капусту, томатную пасту, чуть воды. Тушить 20 минут под крышкой.","imageUrl":null},
++
++  {"id":"local_61","title":"Домашняя шаурма (в аэрогриле)","subCategory":"Закуски","timeEstimate":"15 мин","ingredients":"Лаваш 1 шт, курица жареная 100г, капуста, огурец, помидор, майонез, кетчуп.","steps":"Смазать лаваш соусами, выложить нарезанные овощи и мясо. Плотно свернуть рулетом. Запечь в аэрогриле 5 минут при 200°C для хрустящей корочки.","imageUrl":null},
++  {"id":"local_62","title":"Быстрая пицца в аэрогриле","subCategory":"Закуски","timeEstimate":"10 мин","ingredients":"Круглая пита или лаваш, кетчуп, сыр 50г, колбаса 50г, помидор.","steps":"Смазать основу кетчупом, выложить начинку, густо посыпать сыром. Отправить в аэрогриль на 5-7 минут при 180°C до расплавления сыра.","imageUrl":null},
++  {"id":"local_63","title":"Сырные палочки","subCategory":"Закуски","timeEstimate":"15 мин","ingredients":"Сыр твердый 200г, яйцо 1 шт, панировочные сухари, мука, масло для фритюра.","steps":"Сыр нарезать брусочками. Обвалять в муке, затем в яйце, затем в сухарях. Быстро обжарить в большом количестве раскаленного масла (по 30 сек).","imageUrl":null},
++  {"id":"local_64","title":"Домашние наггетсы","subCategory":"Закуски","timeEstimate":"20 мин","ingredients":"Куриное филе 300г, хлопья кукурузные (без сахара) 100г, яйцо 1 шт, мука.","steps":"Филе нарезать кусочками. Хлопья измельчить в крошку. Обвалять курицу в муке, яйце и хлопьях. Запекать в духовке 15 мин при 200°C или жарить.","imageUrl":null},
++  {"id":"local_65","title":"Чесночные гренки","subCategory":"Закуски","timeEstimate":"10 мин","ingredients":"Черный хлеб (бородинский), чеснок 3 зубчика, соль, масло подсолнечное.","steps":"Хлеб нарезать брусочками, обжарить в масле до хруста. Горячие гренки натереть пропущенным через пресс чесноком с солью.","imageUrl":null},
++  {"id":"local_66","title":"Рулет из лаваша с крабовыми палочками","subCategory":"Закуски","timeEstimate":"15 мин","ingredients":"Лаваш 1 шт, крабовые палочки 100г, сыр плавленый 100г, яйца вареные 2 шт, майонез.","steps":"Лаваш смазать сыром и майонезом. Распределить тертые яйца и мелко нарезанные крабовые палочки. Свернуть в плотный рулет, охладить 1 час, нарезать.","imageUrl":null},
++  {"id":"local_67","title":"Брускетта с томатами","subCategory":"Закуски","timeEstimate":"10 мин","ingredients":"Багет, помидоры 2 шт, чеснок 1 зубчик, базилик свежий, оливковое масло, бальзамик.","steps":"Багет подсушить, натереть чесноком. Помидоры нарезать мелким кубиком, смешать с рубленым базиликом и маслом. Выложить на хлеб, сбрызнуть бальзамиком.","imageUrl":null},
++  {"id":"local_68","title":"Картофель фри в аэрогриле","subCategory":"Закуски","timeEstimate":"20 мин","ingredients":"Картофель 3 шт, масло растительное 1 ст.л., соль, паприка.","steps":"Картошку нарезать брусочками, промыть от крахмала, обсушить. Перемешать с ложкой масла и солью. Запекать в аэрогриле при 200°C 15-18 минут.","imageUrl":null},
++  {"id":"local_69","title":"Салат Оливье","subCategory":"Закуски","timeEstimate":"40 мин","ingredients":"Колбаса вареная 200г, картофель вареный 3 шт, яйца 3 шт, морковь 1 шт, огурцы соленые 3 шт, горошек 0.5 банки, майонез.","steps":"Все ингредиенты нарезать кубиком одинакового размера. Смешать с зеленым горошком, заправить майонезом, посолить.","imageUrl":null},
++  {"id":"local_70","title":"Салат Цезарь (домашний)","subCategory":"Закуски","timeEstimate":"25 мин","ingredients":"Куриное филе 200г, салат айсберг, помидоры черри 10 шт, сыр пармезан, сухарики, соус цезарь.","steps":"Курицу обжарить, нарезать. Листья салата порвать руками. Смешать салат, курицу, половинки черри. Заправить соусом, посыпать сухариками и тертым сыром.","imageUrl":null},
++  {"id":"local_71","title":"Крабовый салат","subCategory":"Закуски","timeEstimate":"20 мин","ingredients":"Крабовые палочки 200г, кукуруза консервированная 1 банка, яйца вареные 4 шт, огурец свежий 1 шт, майонез.","steps":"Нарезать палочки, яйца и огурец мелким кубиком. Добавить кукурузу, заправить майонезом и хорошо перемешать.","imageUrl":null},
++  {"id":"local_72","title":"Фаршированные яйца","subCategory":"Закуски","timeEstimate":"15 мин","ingredients":"Яйца вареные 5 шт, сыр 30г, чеснок 1 зубчик, майонез 1 ст.л., укроп.","steps":"Яйца разрезать пополам. Желтки размять вилкой, смешать с тертым сыром, выдавленным чесноком и майонезом. Начинить белки полученной массой.","imageUrl":null},
++  {"id":"local_73","title":"Канапе с колбасой и сыром","subCategory":"Закуски","timeEstimate":"10 мин","ingredients":"Хлеб тостовый, сыр твердый, сырокопченая колбаса, маслины, шпажки.","steps":"Вырезать из хлеба и сыра маленькие квадратики. На шпажку наколоть маслину, затем кружочек колбасы (свернутый пополам), сыр и хлеб.","imageUrl":null},
++  {"id":"local_74","title":"Кесадилья с курицей","subCategory":"Закуски","timeEstimate":"15 мин","ingredients":"Тортилья 2 шт, куриное филе готовое 100г, сыр 100г, кукуруза 2 ст.л., томатный соус.","steps":"На половину тортильи намазать соус, выложить нарезанную курицу, кукурузу, густо посыпать сыром. Накрыть второй половиной. Поджарить на сухой сковороде с двух сторон.","imageUrl":null},
++  {"id":"local_75","title":"Сосиски в тесте","subCategory":"Закуски","timeEstimate":"35 мин","ingredients":"Слоеное тесто (готовое) 250г, сосиски 6 шт, яйцо для смазывания.","steps":"Тесто разморозить, раскатать, нарезать на длинные полоски. Обмотать сосиски полосками теста по спирали. Смазать яйцом, запекать 20 мин при 180°C.","imageUrl":null},
++  {"id":"local_76","title":"Ленивые пирожки с картошкой","subCategory":"Закуски","timeEstimate":"20 мин","ingredients":"Лаваш, картофельное пюре 200г, лук жареный, масло.","steps":"Пюре смешать с жареным луком. Лаваш нарезать прямоугольниками. Выложить начинку на край, свернуть треугольником или трубочкой. Обжарить на сковороде.","imageUrl":null},
++  {"id":"local_77","title":"Спринг-роллы (из рисовой бумаги)","subCategory":"Закуски","timeEstimate":"20 мин","ingredients":"Рисовая бумага 4 листа, огурец 1 шт, морковь 1 шт, креветки или курица 100г, лист салата.","steps":"Огурец и морковь нарезать тонкой соломкой. Рисовую бумагу смочить в теплой воде на 10 сек. Выложить начинку, плотно свернуть в прозрачный ролл.","imageUrl":null},
++  {"id":"local_78","title":"Греческий салат","subCategory":"Закуски","timeEstimate":"15 мин","ingredients":"Помидоры 2 шт, огурцы 2 шт, перец болгарский 1 шт, красный лук, сыр фета 100г, маслины, оливковое масло, орегано.","steps":"Крупно нарезать овощи. Лук нарезать полукольцами. Добавить маслины и кубики феты. Полить маслом, посыпать сушеным орегано.","imageUrl":"https://commons.wikimedia.org/wiki/Special:FilePath/Greek_salad.jpg"},
++  {"id":"local_79","title":"Запеченные шампиньоны с сыром","subCategory":"Закуски","timeEstimate":"25 мин","ingredients":"Крупные шампиньоны 10 шт, сыр 70г, чеснок, майонез 1 ч.л.","steps":"У грибов удалить ножки. Ножки мелко нарезать, смешать с тертым сыром, чесноком и майонезом. Начинить шляпки, запекать 15 минут при 190°C.","imageUrl":null},
++  {"id":"local_80","title":"Хумус из нута","subCategory":"Закуски","timeEstimate":"15 мин","ingredients":"Консервированный нут 1 банка, кунжутная паста (тахини) 2 ст.л., сок лимона, чеснок, оливковое масло, зира.","steps":"Слить жидкость с нута (немного оставить). В блендере взбить нут, тахини, чеснок, сок лимона, специи. При подаче полить оливковым маслом.","imageUrl":null}
++]
+-- 
+2.43.0
+
