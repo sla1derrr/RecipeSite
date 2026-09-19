@@ -3,6 +3,9 @@
     ViewData["Title"] = "Мои друзья";
     var incoming = ViewBag.IncomingRequests as List<RecipeSite.Models.Friendship> ?? new List<RecipeSite.Models.Friendship>();
     var outgoing = ViewBag.OutgoingRequests as List<RecipeSite.Models.Friendship> ?? new List<RecipeSite.Models.Friendship>();
+
+    string DisplayName(RecipeSite.Models.ApplicationUser u) =>
+        !string.IsNullOrWhiteSpace(u.FirstName) ? u.FirstName : (u.UserName ?? "Без имени");
 }
 
 <div class="container mt-4 mb-5">
@@ -30,7 +33,7 @@
                                 {
                                     <span style="font-size:28px;margin-right:10px;">@(string.IsNullOrEmpty(user.AvatarPreset) ? "👤" : user.AvatarPreset)</span>
                                 }
-                                <span class="fw-bold">@user.UserName</span>
+                                <span class="fw-bold">@DisplayName(user)</span>
                             </a>
                             <div class="d-flex gap-2">
                                 <form asp-controller="Friends" asp-action="AcceptRequest" method="post">
@@ -57,7 +60,7 @@
                     var user = req.Addressee;
                     <div class="col-md-6">
                         <div class="d-flex align-items-center justify-content-between p-3 rounded-4 border bg-light">
-                            <span class="fw-bold">@user!.UserName</span>
+                            <span class="fw-bold">@DisplayName(user!)</span>
                             <form asp-controller="Friends" asp-action="DeclineRequest" method="post">
                                 <input type="hidden" name="id" value="@req.Id" />
                                 <button type="submit" class="btn btn-sm btn-outline-secondary rounded-3">Отменить</button>
@@ -88,7 +91,13 @@
                             {
                                 <span style="font-size:32px;margin-right:12px;">@(string.IsNullOrEmpty(user.AvatarPreset) ? "👤" : user.AvatarPreset)</span>
                             }
-                            <span class="fw-bold">@user.UserName</span>
+                            <div>
+                                <div class="fw-bold">@DisplayName(user)</div>
+                                @if (!string.IsNullOrWhiteSpace(user.FirstName))
+                                {
+                                    <div class="text-muted small">@user.Email</div>
+                                }
+                            </div>
                         </a>
                         <form asp-controller="Friends" asp-action="RemoveFriend" method="post" onsubmit="return confirm('Удалить из друзей?');">
                             <input type="hidden" name="userId" value="@user.Id" />
@@ -99,4 +108,4 @@
             }
         </div>
     </div>
-</div>
+</div>git add .
