@@ -13,6 +13,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey> DataProtectionKeys { get; set; }
 
     public DbSet<RecipeImage> RecipeImages { get; set; }
+    public DbSet<ShoppingList> ShoppingLists { get; set; }
+    public DbSet<ShoppingItem> ShoppingItems { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

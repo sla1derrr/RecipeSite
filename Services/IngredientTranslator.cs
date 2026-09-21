@@ -52,5 +52,28 @@ namespace RecipeSite.Services
             var trimmed = input.Trim().ToLowerInvariant();
             return Map.TryGetValue(trimmed, out var eng) ? eng : trimmed;
         }
+        private static readonly Dictionary<string, string> Reverse = BuildReverse();
+
+        private static Dictionary<string, string> BuildReverse()
+        {
+            var d = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var pair in Map)
+            {
+                if (!d.ContainsKey(pair.Value)) d[pair.Value] = pair.Key;
+            }
+            return d;
+        }
+
+        /// <summary>Русское название продукта, если оно есть в словаре, иначе исходное.</summary>
+        public static string ToRussian(string english)
+        {
+            var e = english.Trim();
+            if (Reverse.TryGetValue(e, out var ru) ||
+                (e.Length > 1 && e.EndsWith("s", StringComparison.OrdinalIgnoreCase) && Reverse.TryGetValue(e[..^1], out ru)))
+            {
+                return char.ToUpper(ru[0]) + ru[1..];
+            }
+            return e;
+        }
     }
 }
