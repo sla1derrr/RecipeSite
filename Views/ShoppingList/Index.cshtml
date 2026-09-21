@@ -129,8 +129,8 @@
 
 <div id="antiforgery">@Html.AntiForgeryToken()</div>
 
-<!-- Окно подтверждения удаления списка -->
-<div class="modal fade" id="slDeleteModal" tabindex="-1" aria-hidden="true">
+<!-- Окно подтверждения удаления списка (добавлен z-index на всякий случай) -->
+<div class="modal fade" id="slDeleteModal" tabindex="-1" aria-hidden="true" style="z-index: 1055;">
     <div class="modal-dialog modal-dialog-centered" style="max-width:400px;">
         <div class="modal-content border-0 rounded-4 shadow-lg">
             <div class="modal-body text-center p-4 p-md-5">
@@ -179,8 +179,10 @@
                 card.querySelector('.sl-bar').style.width = (total === 0 ? 0 : Math.round(done * 100 / total)) + '%';
             }
 
-            // Красивое окно подтверждения вместо стандартного confirm()
+            // ИСПРАВЛЕНИЕ: Находим модальное окно и принудительно переносим его в корень <body>
             var modalEl = document.getElementById('slDeleteModal');
+            document.body.appendChild(modalEl); // Это решает проблему некликабельного экрана
+            
             var deleteModal = new bootstrap.Modal(modalEl);
             var pendingForm = null;
 
@@ -194,7 +196,7 @@
             });
 
             document.getElementById('slDeleteConfirm').addEventListener('click', function () {
-                if (pendingForm) pendingForm.submit(); // submit() не вызывает событие submit повторно
+                if (pendingForm) pendingForm.submit();
             });
 
             document.querySelectorAll('.sl-card').forEach(function (card) {
