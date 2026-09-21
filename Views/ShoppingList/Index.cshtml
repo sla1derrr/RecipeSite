@@ -86,7 +86,7 @@
                         <div class="p-3" style="background:linear-gradient(135deg,#fff5f7 0%,#ffffff 100%);border-bottom:1px solid rgba(255,107,139,.15);">
                             <div class="d-flex justify-content-between align-items-start gap-2">
                                 <h5 class="fw-bold mb-0 text-dark">@list.DishName</h5>
-                                <form asp-action="DeleteList" method="post" onsubmit="return confirm('Удалить этот список?');">
+                                <form asp-action="DeleteList" method="post" class="sl-delete-form" data-name="@list.DishName">
                                     <input type="hidden" name="id" value="@list.Id" />
                                     <button type="submit" class="btn btn-sm btn-outline-danger rounded-3" title="Удалить список">🗑️</button>
                                 </form>
@@ -129,6 +129,25 @@
 
 <div id="antiforgery">@Html.AntiForgeryToken()</div>
 
+<!-- Окно подтверждения удаления списка -->
+<div class="modal fade" id="slDeleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:400px;">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-body text-center p-4 p-md-5">
+                <div class="mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle"
+                     style="width:64px;height:64px;background:#fff0f3;font-size:30px;">🗑️</div>
+                <h5 class="fw-bold text-dark mb-2">Удалить список?</h5>
+                <p class="text-muted mb-4">Список «<span id="slDeleteName" class="fw-semibold"></span>» и все продукты в нём будут удалены. Это действие нельзя отменить.</p>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-light fw-bold rounded-3 flex-fill py-2" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" id="slDeleteConfirm" class="btn text-white fw-bold rounded-3 flex-fill py-2"
+                            style="background-color:#ff6b8b;border:none;">Удалить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     .sl-done { text-decoration: line-through; color: #adb5bd; }
     .sl-check:checked { background-color: #ff6b8b; border-color: #ff6b8b; }
@@ -159,6 +178,24 @@
                 card.querySelector('.sl-count').textContent = done + ' из ' + total;
                 card.querySelector('.sl-bar').style.width = (total === 0 ? 0 : Math.round(done * 100 / total)) + '%';
             }
+
+            // Красивое окно подтверждения вместо стандартного confirm()
+            var modalEl = document.getElementById('slDeleteModal');
+            var deleteModal = new bootstrap.Modal(modalEl);
+            var pendingForm = null;
+
+            document.querySelectorAll('.sl-delete-form').forEach(function (form) {
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    pendingForm = form;
+                    document.getElementById('slDeleteName').textContent = form.dataset.name || '';
+                    deleteModal.show();
+                });
+            });
+
+            document.getElementById('slDeleteConfirm').addEventListener('click', function () {
+                if (pendingForm) pendingForm.submit(); // submit() не вызывает событие submit повторно
+            });
 
             document.querySelectorAll('.sl-card').forEach(function (card) {
                 card.addEventListener('change', function (e) {

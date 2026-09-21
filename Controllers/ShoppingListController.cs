@@ -18,15 +18,18 @@ namespace RecipeSite.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly MealDbService _mealDb;
+        private readonly TextTranslationService _translator;
 
         public ShoppingListController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            MealDbService mealDb)
+            MealDbService mealDb,
+            TextTranslationService translator)
         {
             _context = context;
             _userManager = userManager;
             _mealDb = mealDb;
+            _translator = translator;
         }
 
         public async Task<IActionResult> Index(string? query)
@@ -37,6 +40,8 @@ namespace RecipeSite.Controllers
                 .Where(l => l.UserId == userId)
                 .OrderByDescending(l => l.CreatedAt)
                 .ToListAsync();
+
+            await NormalizeToRussianAsync(lists);
 
             query = query?.Trim();
             ViewBag.Query = query;
@@ -65,13 +70,22 @@ namespace RecipeSite.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var list = new ShoppingList { UserId = userId, DishName = Clip(meal.Title, 100) };
-            foreach (var (ingredient, measure) in meal.GetIngredients().Take(MaxItemsPerList))
+            // Всё храним по-русски: страницу на en / pl / uk переводит виджет Google Translate
+            var ingredients = meal.GetIngredients().Take(MaxItemsPerList).ToList();
+            var titleTask = _translator.ToRussianAsync(meal.Title);
+            var namesTask = Task.WhenAll(ingredients.Select(i => _translator.IngredientToRussianAsync(i.Ingredient)));
+            var amountsTask = Task.WhenAll(ingredients.Select(i => _translator.ToRussianAsync(i.Measure)));
+            await Task.WhenAll(titleTask, namesTask, amountsTask);
+
+            var list = new ShoppingList { UserId = userId, DishName = Clip(await titleTask, 100) };
+            var names = await namesTask;
+            var amounts = await amountsTask;
+            for (int i = 0; i < ingredients.Count; i++)
             {
                 list.Items.Add(new ShoppingItem
                 {
-                    Name = Clip(IngredientTranslator.ToRussian(ingredient), 100),
-                    Amount = string.IsNullOrWhiteSpace(measure) ? null : Clip(measure, 50)
+                    Name = Clip(names[i], 100),
+                    Amount = string.IsNullOrWhiteSpace(amounts[i]) ? null : Clip(amounts[i], 50)
                 });
             }
 
@@ -88,6 +102,7 @@ namespace RecipeSite.Controllers
             if (string.IsNullOrWhiteSpace(dishName)) return RedirectToAction(nameof(Index));
             if (await ListLimitReached(userId)) return RedirectToAction(nameof(Index));
 
+            dishName = await _translator.ToRussianAsync(dishName);
             _context.ShoppingLists.Add(new ShoppingList { UserId = userId, DishName = Clip(dishName, 100) });
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
@@ -105,10 +120,12 @@ namespace RecipeSite.Controllers
             name = name?.Trim();
             if (!string.IsNullOrWhiteSpace(name) && list.Items.Count < MaxItemsPerList)
             {
+                name = await _translator.IngredientToRussianAsync(name);
+                amount = string.IsNullOrWhiteSpace(amount) ? null : await _translator.ToRussianAsync(amount.Trim());
                 list.Items.Add(new ShoppingItem
                 {
                     Name = Clip(name, 100),
-                    Amount = string.IsNullOrWhiteSpace(amount) ? null : Clip(amount.Trim(), 50)
+                    Amount = string.IsNullOrWhiteSpace(amount) ? null : Clip(amount, 50)
                 });
                 await _context.SaveChangesAsync();
             }
@@ -173,6 +190,54 @@ namespace RecipeSite.Controllers
             }
 
             return found.GroupBy(m => m.Id).Select(g => g.First()).Take(12).ToList();
+        }
+
+        /// <summary>
+        /// Старые записи (и всё, что осталось на английском) один раз переводим на русский
+        /// и сохраняем, чтобы виджет Google Translate мог перевести их на выбранный язык сайта.
+        /// </summary>
+        private async Task NormalizeToRussianAsync(List<ShoppingList> lists)
+        {
+            var changed = false;
+
+            var tasks = new List<Task>();
+            foreach (var list in lists)
+            {
+                if (TextTranslationService.IsForeign(list.DishName))
+                {
+                    var l = list;
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        var t = await _translator.ToRussianAsync(l.DishName);
+                        if (t != l.DishName) { l.DishName = Clip(t, 100); changed = true; }
+                    }));
+                }
+
+                foreach (var item in list.Items)
+                {
+                    var it = item;
+                    if (TextTranslationService.IsForeign(it.Name))
+                    {
+                        tasks.Add(Task.Run(async () =>
+                        {
+                            var t = await _translator.IngredientToRussianAsync(it.Name);
+                            if (t != it.Name) { it.Name = Clip(t, 100); changed = true; }
+                        }));
+                    }
+                    if (TextTranslationService.IsForeign(it.Amount))
+                    {
+                        tasks.Add(Task.Run(async () =>
+                        {
+                            var t = await _translator.ToRussianAsync(it.Amount!);
+                            if (t != it.Amount) { it.Amount = Clip(t, 50); changed = true; }
+                        }));
+                    }
+                }
+            }
+
+            if (tasks.Count == 0) return;
+            await Task.WhenAll(tasks);
+            if (changed) await _context.SaveChangesAsync();
         }
 
         private async Task<bool> ListLimitReached(string userId)

@@ -449,128 +449,90 @@ body {
     background: linear-gradient(135deg, rgba(255, 94, 143, 0.85) 0%, rgba(255, 153, 102, 0.85) 100%);
 }
 
-/* ===== Карусель возможностей сайта ===== */
-.carousel-controls {
+/* ===== Возможности сайта: компактные карточки друг под другом ===== */
+.feature-list {
     display: flex;
-    gap: 8px;
-}
-
-.carousel-arrow {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: none;
-    background: white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    font-size: 1.4rem;
-    line-height: 1;
-    color: #ff6b8b;
-    cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.carousel-arrow:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 14px rgba(0,0,0,0.18);
-}
-
-.feature-carousel-wrap {
-    overflow: hidden;
-}
-
-.feature-carousel-track {
-    display: flex;
-    gap: 16px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-    cursor: grab;
-    touch-action: pan-y;
-    padding-bottom: 4px;
-}
-
-.feature-carousel-track:active {
-    cursor: grabbing;
-}
-
-.feature-carousel-track::-webkit-scrollbar {
-    display: none;
-}
-
-.feature-slide {
-    flex: 0 0 calc(33.333% - 11px);
-    scroll-snap-align: start;
-}
-
-@media (max-width: 991px) {
-    .feature-slide {
-        flex: 0 0 calc(50% - 8px);
-    }
-}
-
-@media (max-width: 575px) {
-    .feature-slide {
-        flex: 0 0 100%;
-    }
+    flex-direction: column;
+    gap: 12px;
 }
 
 .feature-card {
     position: relative;
+    display: flex;
+    align-items: center;
+    gap: 16px;
     background: white;
-    border-radius: 16px;
-    padding: 24px;
-    height: 100%;
+    border-radius: 14px;
+    padding: 14px 18px 14px 22px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    overflow: hidden; /* цветная полоска не вылезает за скруглённые углы */
     transition: transform 0.2s ease, box-shadow 0.2s ease;
-    user-select: none;
 }
 
 .feature-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 14px 28px rgba(0,0,0,0.14);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
 }
 
+/* цветная полоска слева */
 .feature-card::before {
     content: "";
     position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 5px;
-    border-radius: 16px 16px 0 0;
+    top: 0; bottom: 0; left: 0;
+    width: 5px;
 }
 
-.feature-card--pink::before   { background: linear-gradient(90deg, #ff6b8b, #ff9ab0); }
-.feature-card--orange::before { background: linear-gradient(90deg, #ff9966, #ffc38a); }
-.feature-card--purple::before { background: linear-gradient(90deg, #b06bff, #d6aeff); }
-.feature-card--yellow::before { background: linear-gradient(90deg, #ffcc4d, #ffe08a); }
-.feature-card--green::before  { background: linear-gradient(90deg, #6bcf8f, #a6e6bd); }
-.feature-card--blue::before   { background: linear-gradient(90deg, #6ba8ff, #a6c8ff); }
+.feature-card--pink::before   { background: linear-gradient(180deg, #ff6b8b, #ff9ab0); }
+.feature-card--orange::before { background: linear-gradient(180deg, #ff9966, #ffc38a); }
+.feature-card--purple::before { background: linear-gradient(180deg, #b06bff, #d6aeff); }
+.feature-card--yellow::before { background: linear-gradient(180deg, #ffcc4d, #ffe08a); }
+.feature-card--green::before  { background: linear-gradient(180deg, #6bcf8f, #a6e6bd); }
+.feature-card--blue::before   { background: linear-gradient(180deg, #6ba8ff, #a6c8ff); }
+
+.feature-icon {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    background: #fff5f7;
+    border-radius: 12px;
+}
+
+.feature-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
 
 .feature-card--soon {
     opacity: 0.85;
 }
 
 .soon-badge {
-    position: absolute;
-    top: 14px;
-    right: 14px;
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 6px;
     background: #f1f1f1;
     color: #888;
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 700;
-    padding: 3px 10px;
+    padding: 2px 9px;
     border-radius: 20px;
 }
 
 .feature-btn {
+    flex: 0 0 auto;
     display: inline-block;
-    margin-top: 14px;
     font-weight: 700;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     color: white;
     background: #ff6b8b;
-    padding: 8px 16px;
+    padding: 8px 14px;
     border-radius: 10px;
     text-decoration: none;
+    white-space: nowrap;
     transition: background 0.15s ease, transform 0.15s ease;
 }
 
@@ -587,20 +549,16 @@ body {
     pointer-events: none;
 }
 
-.carousel-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #e6e6e6;
-    display: inline-block;
-    cursor: pointer;
-    transition: background 0.2s ease, width 0.2s ease;
-}
-
-.carousel-dot.active {
-    background: #ff6b8b;
-    width: 22px;
-    border-radius: 5px;
+@media (max-width: 767px) {
+    .feature-card {
+        flex-wrap: wrap;
+    }
+    .feature-body {
+        flex-basis: calc(100% - 60px);
+    }
+    .feature-btn {
+        margin-left: 60px;
+    }
 }
 
 /* ===== Блок "Как это работает" ===== */
@@ -655,4 +613,86 @@ body {
     background-color: #ff6b8b;
     border-color: #ff6b8b;
     color: white;
+}
+
+/* ===== Главная: быстрые категории плитками ===== */
+.category-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.category-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: white;
+    color: #333;
+    font-weight: 600;
+    font-size: 0.88rem;
+    text-decoration: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.category-chip:hover {
+    background: #ff6b8b;
+    color: white;
+    transform: translateY(-2px);
+}
+
+.category-chip--all {
+    color: #ff6b8b;
+}
+
+/* ===== Главная: последний рецепт друзей ===== */
+.friend-recipe-img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 12px;
+    display: block;
+}
+
+.friend-recipe:hover .fw-bold {
+    color: #ff6b8b;
+}
+
+/* ===== Главная: рецепт дня ===== */
+.daily-recipe {
+    display: flex;
+    align-items: stretch;
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.daily-recipe-img {
+    flex: 0 0 240px;
+    width: 240px;
+    object-fit: cover;
+}
+
+.daily-recipe-body {
+    padding: 24px 28px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.daily-recipe-label {
+    color: #ff6b8b;
+    font-weight: 800;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 6px;
+}
+
+@media (max-width: 575px) {
+    .daily-recipe { flex-direction: column; }
+    .daily-recipe-img { flex-basis: auto; width: 100%; height: 180px; }
 }

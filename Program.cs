@@ -78,8 +78,10 @@ builder.Services.AddHttpClient<RecipeSite.Services.MealDbService>();
 builder.Services.AddHttpClient<RecipeSite.Services.SpoonacularService>();
 builder.Services.AddHttpClient<RecipeSite.Services.EdamamService>();
 builder.Services.AddHttpClient<RecipeSite.Services.FactsService>();
+builder.Services.AddHttpClient<RecipeSite.Services.TextTranslationService>();
 builder.Services.AddSingleton<RecipeSite.Services.SimpleRecipeService>();
 builder.Services.AddLocalization();
+builder.Services.AddMemoryCache();
 
 builder.Services.Configure<RequestLocalizationOptions>(options =>
 {

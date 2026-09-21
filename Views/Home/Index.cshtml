@@ -19,286 +19,211 @@
     <div class="container">
         <div class="row">
 
-            <!-- Левая колонка: быстрые категории -->
+            <!-- Левая колонка: последний рецепт от друзей -->
             <div class="col-lg-3 mb-4">
-                <div class="card shadow-sm border-0 rounded-3 sticky-top" style="top: 20px;">
-                    <div class="card-body">
-                        <h6 class="card-title fw-bold mb-3">🍽️ Быстрые категории</h6>
-                        <div class="d-grid gap-2">
-                            @{
-                                var quickCategories = ViewBag.QuickCategories as List<string> ?? new List<string>();
-                            }
-                            @foreach (var cat in quickCategories)
-                            {
-                                <a href="@Url.Action("Index", "RecipeBook", new { category = cat })"
-                                   class="quick-category-link">
-                                    @cat
+                @{
+                    var friendState = ViewBag.FriendState as string ?? "guest";
+                    var friendRecipe = ViewBag.FriendRecipe as RecipeSite.Models.Recipe;
+                    var friendUser = ViewBag.FriendUser as RecipeSite.Models.ApplicationUser;
+                    var homeIcons = new Dictionary<string, string>
+                    {
+                        { "Завтраки", "🥞" }, { "Супы", "🍲" }, { "Вторые", "🍛" },
+                        { "Сладкое", "🍰" }, { "Закуски", "🥟" }, { "Салаты", "🥗" }
+                    };
+                }
+                <div class="card shadow-sm border-0 rounded-4 overflow-hidden sticky-top" style="top: 20px;">
+                    <div class="card-body p-3">
+                        <h6 class="fw-bold mb-3">👥 Новое у друзей</h6>
+
+                        @if (friendState == "ok" && friendRecipe != null)
+                        {
+                            var icon = homeIcons.TryGetValue(friendRecipe.Category, out var emoji) ? emoji : "🍽️";
+                            var author = friendUser?.UserName ?? "друг";
+
+                            <a asp-controller="Friends" asp-action="Profile" asp-route-userId="@friendRecipe.UserId"
+                               class="friend-recipe text-decoration-none text-dark d-block">
+                                @if (friendRecipe.HasImage)
+                                {
+                                    <img src="/recipe-image/@friendRecipe.Id" alt="@friendRecipe.Title" loading="lazy"
+                                         class="friend-recipe-img" />
+                                }
+                                else
+                                {
+                                    <div
+                                        class="friend-recipe-img d-flex align-items-center justify-content-center bg-light fs-1">
+                                        @icon</div>
+                                    }
+                                    <div class="pt-3">
+                                        <span
+                                        class="badge rounded-pill bg-light text-danger border px-2 py-1 mb-2 small">@friendRecipe.Category</span>
+                                        <div class="fw-bold mb-1">@friendRecipe.Title</div>
+                                        <div class="small text-muted">
+                                            Добавил(а): <span class="fw-semibold" style="color:#ff6b8b;">@author</span>
+                                        </div>
+                                        <div class="small text-muted">@friendRecipe.CreatedAt.ToString("dd.MM.yyyy")</div>
+                                    </div>
+                                </a>
+                                <a asp-controller="Friends" asp-action="Profile" asp-route-userId="@friendRecipe.UserId"
+                                   class="d-block text-center small fw-bold mt-3" style="color:#ff6b8b;">
+                                    Все рецепты @author →
                                 </a>
                             }
+                        else if (friendState == "norecipes")
+                            {
+                                <p class="text-muted small mb-3">Друзья пока не добавили ни одного рецепта.</p>
+                                <a asp-controller="Friends" asp-action="Index" class="d-block text-center small fw-bold"
+                                   style="color:#ff6b8b;">Мои друзья →</a>
+                            }
+                            else if (friendState == "nofriends")
+                            {
+                                <p class="text-muted small mb-3">Добавьте друзей, и здесь появятся их новые рецепты.</p>
+                                <a asp-controller="Friends" asp-action="Search" class="feature-btn">Найти друзей →</a>
+                            }
+                            else
+                            {
+                                <p class="text-muted small mb-3">Войдите, чтобы видеть, что готовят ваши друзья.</p>
+                                <a asp-area="Identity" asp-page="/Account/Login" class="feature-btn">Войти →</a>
+                            }
                         </div>
-                        <a href="@Url.Action("Index", "RecipeBook")" class="d-block text-center small fw-bold mt-3"
-                           style="color:#ff6b8b;">
-                            Смотреть все категории →
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Правая колонка: карусель возможностей сайта -->
-            <div class="col-lg-9">
-
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="fw-bold mb-0">Что можно делать на сайте</h5>
-                    <div class="carousel-controls">
-                        <button type="button" class="carousel-arrow" id="carouselPrev" aria-label="Назад">‹</button>
-                        <button type="button" class="carousel-arrow" id="carouselNext" aria-label="Вперёд">›</button>
                     </div>
                 </div>
 
-                <div class="feature-carousel-wrap">
-                    <div class="feature-carousel-track" id="carouselTrack">
+                <!-- Правая колонка: возможности сайта (список карточек друг под другом) -->
+                <div class="col-lg-9">
 
-                        <div class="feature-slide">
-                            <div class="feature-card feature-card--pink">
-                                <div class="fs-1 mb-3">🍱</div>
-                                <h5 class="fw-bold">Удобные разделы блюд</h5>
-                                <p class="text-muted small">Супы, вторые блюда, десерты и многое другое — всё разложено
+                    <!-- Быстрые категории -->
+                    @{
+                        var quickCategories = ViewBag.QuickCategories as List<RecipeSite.Controllers.HomeCategory>
+                                              ?? new List<RecipeSite.Controllers.HomeCategory>();
+                    }
+                    @if (quickCategories.Any())
+                    {
+                        <h5 class="fw-bold mb-3">Быстрые категории</h5>
+                        <div class="category-chips mb-4">
+                            @foreach (var cat in quickCategories)
+                            {
+                                <a href="@Url.Action("Index", "RecipeBook", new { category = cat.Key })" class="category-chip">
+                                    <span class="category-chip-emoji">@cat.Emoji</span>@cat.Title
+                                </a>
+                            }
+                            <a href="@Url.Action("Index", "RecipeBook")" class="category-chip category-chip--all">Все →</a>
+                        </div>
+                    }
+
+                    <h5 class="fw-bold mb-3">Что можно делать на сайте</h5>
+
+                    <div class="feature-list">
+
+                        <div class="feature-card feature-card--pink">
+                            <div class="feature-icon">🍱</div>
+                            <div class="feature-body">
+                                <h6 class="fw-bold mb-1">Удобные разделы блюд</h6>
+                                <p class="text-muted small mb-0">Супы, вторые блюда, десерты и многое другое — всё разложено
                                     по полочкам для быстрого поиска.</p>
-                                    <a href="@Url.Action("Index", "RecipeBook")" class="feature-btn">Открыть книгу рецептов
-                                        →</a>
+                                </div>
+                                <a href="@Url.Action("Index", "RecipeBook")" class="feature-btn">Открыть книгу рецептов →</a>
+                            </div>
+
+                            <div class="feature-card feature-card--orange">
+                                <div class="feature-icon">📱</div>
+                                <div class="feature-body">
+                                    <h6 class="fw-bold mb-1">Сохраняй из соцсетей</h6>
+                                    <p class="text-muted small mb-0">Увидели крутой рецепт в TikTok или Instagram? Просто
+                                        вставьте ссылку, и мы сохраним его к вам в книгу.</p>
                                     </div>
+                                    <a href="@Url.Action("MyRecipes", "Recipes")" class="feature-btn">Перейти в мои рецепты →</a>
                                 </div>
 
-                                <div class="feature-slide">
-                                    <div class="feature-card feature-card--orange">
-                                        <div class="fs-1 mb-3">📱</div>
-                                        <h5 class="fw-bold">Сохраняй из соцсетей</h5>
-                                        <p class="text-muted small">Увидели крутой рецепт в TikTok или Instagram? Просто
-                                            вставьте ссылку, и мы сохраним его к вам в книгу.</p>
-                                            <a href="@Url.Action("MyRecipes", "Recipes")" class="feature-btn">Перейти в мои рецепты
-                                                →</a>
+                                <div class="feature-card feature-card--purple">
+                                    <div class="feature-icon">🎡</div>
+                                    <div class="feature-body">
+                                        <h6 class="fw-bold mb-1">Что приготовить?</h6>
+                                        <p class="text-muted small mb-0">Не знаешь, что готовить сегодня? Крути колесо — оно выберет
+                                            блюдо из твоих рецептов или каталога.</p>
+                                        </div>
+                                        <a href="@Url.Action("Index", "Wheel")" class="feature-btn">Крутить колесо →</a>
+                                    </div>
+
+                                    <div class="feature-card feature-card--yellow">
+                                        <div class="feature-icon">✨</div>
+                                        <div class="feature-body">
+                                            <h6 class="fw-bold mb-1">Своя картинка</h6>
+                                            <p class="text-muted small mb-0">Добавьте фото блюда в вашей книге рецептов с Tik-Tok или
+                                                Reels, чтобы было легче определить что это за блюдо.</p>
                                             </div>
+                                            <a asp-controller="Recipes" asp-action="MyRecipes" class="feature-btn">Добавить рецепт →</a>
                                         </div>
 
-                                        <div class="feature-slide">
-                                            <div class="feature-card feature-card--purple">
-                                                <div class="fs-1 mb-3">🎡</div>
-                                                <h5 class="fw-bold">Что приготовить?</h5>
-                                                <p class="text-muted small">Не знаешь, что готовить сегодня? Крути колесо — оно выберет
-                                                    блюдо из твоих рецептов или каталога.</p>
-                                                    <a href="@Url.Action("Index", "Wheel")" class="feature-btn">Крутить колесо →</a>
+                                        <div class="feature-card feature-card--green">
+                                            <div class="feature-icon">🛒</div>
+                                            <div class="feature-body">
+                                                <h6 class="fw-bold mb-1">Авто-список покупок</h6>
+                                                <p class="text-muted small mb-0">Добавьте блюда в план на неделю, и Foodify сам соберет все
+                                                    нужные ингредиенты в удобный список для магазина.</p>
                                                 </div>
+                                                <a asp-controller="ShoppingList" asp-action="Index" class="feature-btn">Составить список →</a>
                                             </div>
 
-                                            <div class="feature-slide">
-                                                <div class="feature-card feature-card--yellow">
-                                                    <div class="fs-1 mb-3">✨</div>
-                                                    <h5 class="fw-bold">Своя картинка</h5>
-                                                    <p class="text-muted small">Добавьте фото блюда в вашей книге рецептов с Tik-Tok или
-                                                        Reels, чтобы было легче определить что это за блюдо.</p>
-                                                        <a asp-controller="Recipes" asp-action="MyRecipes" class="feature-btn">Добавить рецепт
-                                                            →</a>
-                                                        </div>
+                                            <div class="feature-card feature-card--blue feature-card--soon">
+                                                <div class="feature-icon">🥑</div>
+                                                <div class="feature-body">
+                                                    <h6 class="fw-bold mb-1">Холодильник <span class="soon-badge">Скоро</span></h6>
+                                                    <p class="text-muted small mb-0">Впишите продукты, которые у вас сейчас есть, и мы
+                                                        подскажем, какое блюдо из них можно приготовить прямо сейчас.</p>
                                                     </div>
-
-                                                    <div class="feature-slide">
-                                                        <div class="feature-card feature-card--green">
-                                                            <div class="fs-1 mb-3">🛒</div>
-                                                            <h5 class="fw-bold">Авто-список покупок</h5>
-                                                            <p class="text-muted small">Добавьте блюда в план на неделю, и Foodify сам соберет все
-                                                                нужные ингредиенты в удобный список для магазина.</p>
-                                                                <a asp-controller="ShoppingList" asp-action="Index" class="feature-btn">Составить список →</a>
-                                                            </div>
-                                                        </div>
-
-                                                        <div class="feature-slide">
-                                                            <div class="feature-card feature-card--blue feature-card--soon">
-                                                                <span class="soon-badge">Скоро</span>
-                                                                <div class="fs-1 mb-3">🥑</div>
-                                                                <h5 class="fw-bold">Холодильник</h5>
-                                                                <p class="text-muted small">Впишите продукты, которые у вас сейчас есть, и мы подскажем,
-                                                                    какое блюдо из них можно приготовить прямо сейчас.</p>
-                                                                    <span class="feature-btn feature-btn--disabled">В разработке</span>
-                                                                </div>
-                                                            </div>
-
-                                                        </div>
-                                                    </div>
-
-                                                    <div class="d-flex justify-content-center gap-2 mt-3" id="carouselDots"></div>
-
+                                                    <span class="feature-btn feature-btn--disabled">В разработке</span>
                                                 </div>
-                                            </div>
 
-                                            <!-- ===== Блок "Как это работает" ===== -->
-                                            <div class="how-it-works my-5 py-4">
-                                                <h5 class="fw-bold text-center mb-4">Как это работает</h5>
-                                                <div class="row g-4">
+                                            </div>
+                                        </div>
+                                    </div>
+
+
+                                    <!-- ===== Блок "Как это работает" ===== -->
+                                    <div class="how-it-works my-5 py-4">
+                                        <h5 class="fw-bold text-center mb-4">Как это работает</h5>
+                                        <div class="row g-4">
+                                            <div class="col-md-4 text-center">
+                                                <div class="how-step-badge mx-auto mb-3">1</div>
+                                                <h6 class="fw-bold">Находите рецепт</h6>
+                                                <p class="text-muted small px-lg-4">В книге рецептов, у себя в соцсетях или просто крутите колесо,
+                                                    если не знаете, что готовить.</p>
+                                                </div>
+                                                <div class="col-md-4 text-center">
+                                                    <div class="how-step-badge mx-auto mb-3">2</div>
+                                                    <h6 class="fw-bold">Сохраняете к себе</h6>
+                                                    <p class="text-muted small px-lg-4">Рецепт попадает в вашу личную книгу — больше никаких потерянных
+                                                        заметок и закладок.</p>
+                                                    </div>
                                                     <div class="col-md-4 text-center">
-                                                        <div class="how-step-badge mx-auto mb-3">1</div>
-                                                        <h6 class="fw-bold">Находите рецепт</h6>
-                                                        <p class="text-muted small px-lg-4">В книге рецептов, у себя в соцсетях или просто крутите колесо,
-                                                            если не знаете, что готовить.</p>
+                                                        <div class="how-step-badge mx-auto mb-3">3</div>
+                                                        <h6 class="fw-bold">Готовите с удовольствием</h6>
+                                                        <p class="text-muted small px-lg-4">Открываете рецепт в любой момент — ингредиенты, шаги и всё
+                                                            нужное всегда под рукой.</p>
                                                         </div>
-                                                        <div class="col-md-4 text-center">
-                                                            <div class="how-step-badge mx-auto mb-3">2</div>
-                                                            <h6 class="fw-bold">Сохраняете к себе</h6>
-                                                            <p class="text-muted small px-lg-4">Рецепт попадает в вашу личную книгу — больше никаких потерянных
-                                                                заметок и закладок.</p>
-                                                            </div>
-                                                            <div class="col-md-4 text-center">
-                                                                <div class="how-step-badge mx-auto mb-3">3</div>
-                                                                <h6 class="fw-bold">Готовите с удовольствием</h6>
-                                                                <p class="text-muted small px-lg-4">Открываете рецепт в любой момент — ингредиенты, шаги и всё
-                                                                    нужное всегда под рукой.</p>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <!-- ===== CTA-баннер снизу ===== -->
-                                                        <div class="home-cta text-center rounded-4 my-5 p-5">
-                                                            <h4 class="fw-bold text-white mb-2">Готовы навести порядок в своих рецептах?</h4>
-                                                            <p class="text-white-50 mb-4">Начните с книги рецептов или сохраните первый рецепт из соцсетей прямо сейчас.
-                                                            </p>
-                                                            <div class="d-flex justify-content-center gap-3 flex-wrap">
-                                                                <a href="@Url.Action("Index", "RecipeBook")"
-                                                                   class="btn btn-light fw-bold px-4 py-2 rounded-3 shadow-sm">📖 Книга рецептов</a>
-                                                                <a href="@Url.Action("MyRecipes", "Recipes")"
-                                                                   class="btn btn-outline-light fw-bold px-4 py-2 rounded-3">📱 Мои рецепты</a>
-                                                            </div>
-                                                        </div>
-
                                                     </div>
                                                 </div>
 
-                                                @section Scripts {
-                                                    <script>
-                                                        (function () {
-                                                            // ================= КАРУСЕЛЬ ВОЗМОЖНОСТЕЙ =================
-                                                            const track = document.getElementById('carouselTrack');
-                                                            if (!track) return;
-
-                                                            const slides = Array.from(track.children);
-                                                            const dotsWrap = document.getElementById('carouselDots');
-                                                            const prevBtn = document.getElementById('carouselPrev');
-                                                            const nextBtn = document.getElementById('carouselNext');
-
-                                                            let slideWidth = 0;
-                                                            let index = 0;
-                                                            let autoplayTimer = null;
-                                                            let isPointerDown = false;
-                                                            let dragStartX = 0;
-                                                            let dragStartScroll = 0;
-                                                            let didDrag = false;
-
-                                                            function slidesPerView() {
-                                                                if (window.innerWidth < 576) return 1;
-                                                                if (window.innerWidth < 992) return 2;
-                                                                return 3;
-                                                            }
-
-                                                            function maxIndex() {
-                                                                return Math.max(0, slides.length - slidesPerView());
-                                                            }
-
-                                                            function measure() {
-                                                                if (!slides.length) return;
-                                                                slideWidth = slides[0].getBoundingClientRect().width + 16; // + gap
-                                                            }
-
-                                                            function goTo(i, smooth = true) {
-                                                                index = Math.min(Math.max(i, 0), maxIndex());
-                                                                track.style.scrollBehavior = smooth ? 'smooth' : 'auto';
-                                                                track.scrollLeft = index * slideWidth;
-                                                                updateDots();
-                                                            }
-
-                                                            function buildDots() {
-                                                                dotsWrap.innerHTML = '';
-                                                                const total = maxIndex() + 1;
-                                                                for (let i = 0; i < total; i++) {
-                                                                    const dot = document.createElement('span');
-                                                                    dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
-                                                                    dot.addEventListener('click', function () {
-                                                                        stopAutoplay();
-                                                                        goTo(i);
-                                                                        startAutoplay();
-                                                                    });
-                                                                    dotsWrap.appendChild(dot);
-                                                                }
-                                                            }
-
-                                                            function updateDots() {
-                                                                Array.from(dotsWrap.children).forEach(function (d, i) {
-                                                                    d.classList.toggle('active', i === index);
-                                                                });
-                                                            }
-
-                                                            function next() {
-                                                                goTo(index + 1 > maxIndex() ? 0 : index + 1);
-                                                            }
-
-                                                            function prev() {
-                                                                goTo(index - 1 < 0 ? maxIndex() : index - 1);
-                                                            }
-
-                                                            function startAutoplay() {
-                                                                stopAutoplay();
-                                                                autoplayTimer = setInterval(next, 3500);
-                                                            }
-
-                                                            function stopAutoplay() {
-                                                                if (autoplayTimer) clearInterval(autoplayTimer);
-                                                            }
-
-                                                            // ---------- Перетаскивание мышкой / свайп пальцем ----------
-                                                            track.addEventListener('pointerdown', function (e) {
-                                                                isPointerDown = true;
-                                                                didDrag = false;
-                                                                dragStartX = e.clientX;
-                                                                dragStartScroll = track.scrollLeft;
-                                                                track.style.scrollBehavior = 'auto';
-                                                                stopAutoplay();
-                                                            });
-
-                                                            window.addEventListener('pointermove', function (e) {
-                                                                if (!isPointerDown) return;
-                                                                const delta = e.clientX - dragStartX;
-                                                                if (Math.abs(delta) > 5) didDrag = true;
-                                                                track.scrollLeft = dragStartScroll - delta;
-                                                            });
-
-                                                            window.addEventListener('pointerup', function () {
-                                                                if (!isPointerDown) return;
-                                                                isPointerDown = false;
-                                                                const nearest = Math.round(track.scrollLeft / slideWidth);
-                                                                goTo(nearest);
-                                                                startAutoplay();
-                                                            });
-
-                                                            // Не даём клику по ссылке сработать сразу после перетаскивания
-                                                            track.addEventListener('click', function (e) {
-                                                                if (didDrag) {
-                                                                    e.preventDefault();
-                                                                    e.stopPropagation();
-                                                                }
-                                                            }, true);
-
-                                                            if (prevBtn) prevBtn.addEventListener('click', function () { stopAutoplay(); prev(); startAutoplay(); });
-                                                            if (nextBtn) nextBtn.addEventListener('click', function () { stopAutoplay(); next(); startAutoplay(); });
-
-                                                            track.addEventListener('mouseenter', stopAutoplay);
-                                                            track.addEventListener('mouseleave', startAutoplay);
-
-                                                            window.addEventListener('resize', function () {
-                                                                measure();
-                                                                buildDots();
-                                                                goTo(Math.min(index, maxIndex()), false);
-                                                            });
-
-                                                            measure();
-                                                            buildDots();
-                                                            startAutoplay();
-                                                        })();
-                                                    </script>
+                                                <!-- ===== Рецепт дня ===== -->
+                                                @{
+                                                    var daily = ViewBag.DailyMeal as RecipeSite.Services.MealDbMeal;
                                                 }
+                                                @if (daily != null)
+                                                {
+                                                    <div class="daily-recipe my-5">
+                                                        @if (!string.IsNullOrEmpty(daily.ImageUrl))
+                                                        {
+                                                            <img src="@daily.ImageUrl" alt="@daily.Title" loading="lazy" class="daily-recipe-img" />
+                                                        }
+                                                        <div class="daily-recipe-body">
+                                                            <div class="daily-recipe-label">🍽️ Рецепт дня</div>
+                                                            <h4 class="fw-bold mb-2">@daily.Title</h4>
+                                                            <p class="text-muted mb-3">Попробуйте приготовить это блюдо сегодня. Завтра здесь будет новое.</p>
+                                                            <a asp-controller="RecipeBook" asp-action="Details" asp-route-id="@("meal_" + daily.Id)"
+                                                               class="feature-btn">Смотреть рецепт →</a>
+                                                        </div>
+                                                    </div>
+                                                }
+
+                                            </div>
+                                        </div>
