@@ -27,5 +27,7 @@ namespace RecipeSite.Models
         public string? UserId { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        public bool HasImage { get; set; }
     }
 }

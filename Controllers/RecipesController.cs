@@ -15,6 +15,12 @@ namespace RecipeSite.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private static readonly HttpClient _httpClient = new HttpClient();
 
+        private const long MaxImageBytes = 2 * 1024 * 1024; // 2 МБ
+        private static readonly string[] AllowedImageTypes =
+        {
+            "image/jpeg", "image/png", "image/webp", "image/gif"
+        };
+
         public RecipesController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
         {
             _context = context;
@@ -41,7 +47,7 @@ namespace RecipeSite.Controllers
 
         [Authorize]
         [HttpPost]
-        public async Task<IActionResult> AddRecipe(string title, string category, string sourceUrl)
+        public async Task<IActionResult> AddRecipe(string title, string category, string? sourceUrl, IFormFile? image)
         {
             var userId = _userManager.GetUserId(User);
             var recipe = new Recipe
@@ -50,11 +56,28 @@ namespace RecipeSite.Controllers
                 Category = category,
                 SourceUrl = sourceUrl,
                 UserId = userId,
-                ImageUrl = null // картинку не сохраняем — иконка подставляется по категории прямо на странице
+                ImageUrl = null
             };
 
             _context.Recipes.Add(recipe);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(); // после этого у рецепта появляется Id
+
+            // Фото необязательное: сохраняем, только если файл подходит по размеру и типу
+            if (image != null && image.Length > 0 && image.Length <= MaxImageBytes
+                && AllowedImageTypes.Contains(image.ContentType))
+            {
+                using var ms = new MemoryStream();
+                await image.CopyToAsync(ms);
+
+                _context.RecipeImages.Add(new RecipeImage
+                {
+                    RecipeId = recipe.Id,
+                    Data = ms.ToArray(),
+                    ContentType = image.ContentType
+                });
+                recipe.HasImage = true;
+                await _context.SaveChangesAsync();
+            }
 
             return RedirectToAction("MyRecipes");
         }
@@ -68,6 +91,7 @@ namespace RecipeSite.Controllers
 
             if (recipe != null)
             {
+                // Фото из RecipeImages удалится само (каскадное удаление)
                 _context.Recipes.Remove(recipe);
                 await _context.SaveChangesAsync();
             }

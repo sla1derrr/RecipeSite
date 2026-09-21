@@ -1,4 +1,19 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Identity
+@using RecipeSite.Data
+@using RecipeSite.Models
+@inject ApplicationDbContext Db
+@inject UserManager<ApplicationUser> UserManager
+@{
+    var pendingFriendRequests = 0;
+    if (User.Identity?.IsAuthenticated == true)
+    {
+        var myId = UserManager.GetUserId(User);
+        pendingFriendRequests = await Db.Friendships
+            .CountAsync(f => f.AddresseeId == myId && f.Status == FriendshipStatus.Pending);
+    }
+}
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -84,7 +99,13 @@
                             <a class="nav-link text-dark" asp-controller="Wheel" asp-action="Index">Что приготовить?</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-controller="Friends" asp-action="Index">Друзья</a>
+                            <a class="nav-link text-dark" asp-controller="Friends" asp-action="Index">
+                                Друзья
+                                @if (pendingFriendRequests > 0)
+                                {
+                                    <span class="badge rounded-pill bg-danger ms-1" style="font-size:.7rem;">@pendingFriendRequests</span>
+                                }
+                            </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home"
@@ -98,6 +119,15 @@
     </header>
     <div class="container">
         <main role="main" class="pb-3">
+            @if (pendingFriendRequests > 0
+                 && ViewContext.RouteData.Values["controller"]?.ToString() == "Home"
+                 && ViewContext.RouteData.Values["action"]?.ToString() == "Index")
+            {
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 mb-3 rounded-4 shadow-sm bg-white">
+                    <span class="fw-bold">🔔 Вас хотят добавить в друзья <span class="badge rounded-pill bg-danger ms-1">@pendingFriendRequests</span></span>
+                    <a asp-controller="Friends" asp-action="Index" class="btn btn-sm text-white fw-bold rounded-3" style="background-color:#ff6b8b;border:none;">Посмотреть</a>
+                </div>
+            }
             @RenderBody()
         </main>
     </div>
